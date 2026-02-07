@@ -11,6 +11,7 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import type {
+  Community,
   Resident,
   Vendor,
   RepairTicket,
@@ -32,6 +33,7 @@ const db = getFirestore(app);
 
 // Collection 名稱
 const COLLECTIONS = {
+  COMMUNITIES: 'communities',
   RESIDENTS: 'residents',
   VENDORS: 'vendors',
   REPAIRS: 'repairs',
@@ -43,6 +45,47 @@ const COLLECTIONS = {
 function docToData<T>(doc: any): T {
   return { id: doc.id, ...doc.data() } as T;
 }
+
+// ==================== 社區服務 ====================
+export const communitiesService = {
+  async getAll(): Promise<Community[]> {
+    const ref = collection(db, COLLECTIONS.COMMUNITIES);
+    const snapshot = await getDocs(ref);
+    return snapshot.docs
+      .map((d) => docToData<Community>(d))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  },
+
+  async getById(id: string): Promise<Community | null> {
+    const docRef = doc(db, COLLECTIONS.COMMUNITIES, id);
+    const snapshot = await getDoc(docRef);
+    if (!snapshot.exists()) return null;
+    return docToData<Community>(snapshot);
+  },
+
+  async create(data: Omit<Community, 'id'>): Promise<string> {
+    const ref = collection(db, COLLECTIONS.COMMUNITIES);
+    const docRef = await addDoc(ref, {
+      ...data,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    return docRef.id;
+  },
+
+  async update(id: string, data: Partial<Community>): Promise<void> {
+    const docRef = doc(db, COLLECTIONS.COMMUNITIES, id);
+    await updateDoc(docRef, {
+      ...data,
+      updatedAt: serverTimestamp(),
+    });
+  },
+
+  async delete(id: string): Promise<void> {
+    const docRef = doc(db, COLLECTIONS.COMMUNITIES, id);
+    await deleteDoc(docRef);
+  },
+};
 
 // ==================== 住戶服務 ====================
 export const residentsService = {
@@ -215,6 +258,7 @@ export const meetingsService = {
 export { db, app };
 
 export const firebaseServices = {
+  communities: communitiesService,
   residents: residentsService,
   vendors: vendorsService,
   repairs: repairsService,

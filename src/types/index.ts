@@ -5,6 +5,9 @@ export interface Community {
   address: string;
   totalUnits: number;
   monthlyFee: number;
+  floors?: number;
+  unitsPerFloor?: number;
+  createdBy?: string;
   createdAt: Date;
 }
 

@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { TabBar } from '@/components/ui';
 import {
   HomeScreen,
   AnnouncementsScreen,
+  OnboardingScreen,
   ResidentsScreen,
   ResidentDetailScreen,
   VendorsScreen,
@@ -10,9 +11,7 @@ import {
   SettingsScreen,
 } from '@/screens';
 import { useAppStore } from '@/stores/appStore';
-import { useDataStore } from '@/stores/dataStore';
 import { useToastStore } from '@/hooks/useToast';
-import { liffService } from '@/services/liff';
 import { getVisibleTabs } from '@/lib/permissions';
 import type { ResidentRoleLabel } from '@/types';
 
@@ -22,6 +21,7 @@ const App: React.FC = () => {
     error,
     userProfile,
     userRole,
+    registrationStatus,
     currentScreen,
     selectedResident,
     selectedVendor,
@@ -34,111 +34,39 @@ const App: React.FC = () => {
     devSetRole,
   } = useAppStore();
 
-  const { addResident, fetchResidents } = useDataStore();
   const { message: toastMessage, visible: toastVisible } = useToastStore();
-  const [registerStatus, setRegisterStatus] = useState<'idle' | 'registering' | 'success' | 'error'>('idle');
-  const [registerMessage, setRegisterMessage] = useState('');
 
   // 初始化 LIFF
   useEffect(() => {
     initializeLiff();
   }, [initializeLiff]);
 
-  // LIFF 登入後偵測角色，然後處理自動註冊
+  // LIFF 登入後偵測角色
   useEffect(() => {
-    const initRoleAndRegister = async () => {
+    const initRole = async () => {
       if (isLoading) return;
 
       // Demo 模式（沒有 LIFF）：預設為主委以便測試
-      // 真正的權限控制是透過 LINE LIFF + Firestore 角色偵測
       if (!userProfile && error) {
         devSetRole('主委');
         return;
       }
 
-      // 先偵測角色（等待完成）
+      // 偵測角色
       if (userProfile?.userId) {
         await detectUserRole(userProfile.userId);
       }
-
-      // 角色偵測完成後，再處理自動註冊
-      const urlParams = new URLSearchParams(window.location.search);
-      const isRegister = urlParams.get('register') === 'true';
-      const unit = urlParams.get('unit') || '';
-
-      if (!isRegister) return;
-
-      // 清除 URL 參數，避免重複註冊
-      window.history.replaceState({}, '', window.location.pathname);
-
-      // 檢查是否已經註冊過
-      const { registrationStatus } = useAppStore.getState();
-      if (registrationStatus === 'registered') {
-        // 已經是住戶，不需要重新註冊
-        return;
-      }
-
-      setRegisterStatus('registering');
-      setRegisterMessage('正在為您登記...');
-
-      try {
-        const profile = await liffService.getProfile();
-
-        if (!profile) {
-          if (!liffService.isLoggedIn()) {
-            liffService.login();
-            return;
-          }
-          throw new Error('無法獲取您的 LINE 資料');
-        }
-
-        // 再次確認（雙重檢查）
-        await fetchResidents();
-        const allResidents = useDataStore.getState().residents;
-        const alreadyRegistered = allResidents.some(
-          (r) => r.lineUserId === profile.userId
-        );
-
-        if (alreadyRegistered) {
-          await detectUserRole(profile.userId);
-          setRegisterStatus('idle');
-          return;
-        }
-
-        await addResident({
-          name: profile.displayName,
-          unit: unit === '待填寫' ? '' : unit,
-          phone: '',
-          lineId: '',
-          lineUserId: profile.userId,
-          role: '住戶',
-          moveInDate: new Date().toISOString().split('T')[0],
-          paymentHistory: [],
-        });
-
-        await fetchResidents();
-        await detectUserRole(profile.userId);
-
-        setRegisterStatus('success');
-        setRegisterMessage(`${profile.displayName}，歡迎加入！您已成功登記為社區住戶。`);
-
-        setTimeout(() => {
-          setRegisterStatus('idle');
-        }, 5000);
-
-      } catch (err) {
-        console.error('自動註冊失敗:', err);
-        setRegisterStatus('error');
-        setRegisterMessage('登記失敗：' + (err as Error).message);
-
-        setTimeout(() => {
-          setRegisterStatus('idle');
-        }, 5000);
-      }
     };
 
-    initRoleAndRegister();
+    initRole();
   }, [isLoading]);
+
+  // Onboarding 完成後的回調
+  const handleOnboardingComplete = () => {
+    // OnboardingScreen 內部已經呼叫 detectUserRole 更新了角色
+    // 這裡只需要確保畫面切換到首頁
+    setCurrentScreen('home');
+  };
 
   // 載入中畫面
   if (isLoading) {
@@ -155,6 +83,17 @@ const App: React.FC = () => {
   // 錯誤畫面（但仍可使用 Demo 模式）
   if (error) {
     console.warn('LIFF 初始化失敗，使用 Demo 模式:', error);
+  }
+
+  // 未註冊用戶 → 顯示 Onboarding（僅在有 LIFF Profile 時才顯示）
+  const showOnboarding = registrationStatus === 'unregistered' && userProfile && !error;
+
+  if (showOnboarding) {
+    return (
+      <div className="font-[-apple-system,BlinkMacSystemFont,sans-serif]">
+        <OnboardingScreen onComplete={handleOnboardingComplete} />
+      </div>
+    );
   }
 
   // 可見的 Tab
@@ -230,42 +169,6 @@ const App: React.FC = () => {
                 {role}
               </button>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* 自動註冊狀態提示 */}
-      {registerStatus !== 'idle' && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-5">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-xl">
-            {registerStatus === 'registering' && (
-              <>
-                <div className="w-12 h-12 border-4 border-[#06C755] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-[#1D1D1F] font-medium">{registerMessage}</p>
-              </>
-            )}
-            {registerStatus === 'success' && (
-              <>
-                <div className="w-16 h-16 bg-[#06C755] rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <p className="text-[#1D1D1F] font-medium text-lg mb-2">登記成功！</p>
-                <p className="text-[#86868B] text-sm">{registerMessage}</p>
-              </>
-            )}
-            {registerStatus === 'error' && (
-              <>
-                <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </div>
-                <p className="text-[#1D1D1F] font-medium text-lg mb-2">登記失敗</p>
-                <p className="text-[#86868B] text-sm">{registerMessage}</p>
-              </>
-            )}
           </div>
         </div>
       )}

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import type { Resident, Vendor, RepairTicket, Meeting } from '@/types';
-import { residentsService, vendorsService, repairsService, meetingsService } from '@/services/firebase';
+import type { Community, Resident, Vendor, RepairTicket, Meeting } from '@/types';
+import { communitiesService, residentsService, vendorsService, repairsService, meetingsService } from '@/services/firebase';
 import { mockResidents, mockVendors, mockRepairs, mockMeetings } from '@/data/mockData';
 
 // 當 Firebase API Key 未設定時，使用 Mock 資料
@@ -17,12 +17,16 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 }
 
 interface DataState {
+  communities: Community[];
   residents: Resident[];
   vendors: Vendor[];
   repairs: RepairTicket[];
   meetings: Meeting[];
   isLoading: boolean;
   error: string | null;
+
+  // 社區
+  fetchCommunities: () => Promise<void>;
 
   // 住戶
   fetchResidents: () => Promise<void>;
@@ -53,12 +57,29 @@ interface DataState {
 }
 
 export const useDataStore = create<DataState>((set, get) => ({
+  communities: [],
   residents: [],
   vendors: [],
   repairs: [],
   meetings: [],
   isLoading: false,
   error: null,
+
+  // ==================== 社區 ====================
+  fetchCommunities: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      if (USE_MOCK) {
+        set({ communities: [], isLoading: false });
+      } else {
+        const communities = await withTimeout(communitiesService.getAll(), 15000, '讀取社區');
+        set({ communities, isLoading: false });
+      }
+    } catch (error) {
+      console.error('fetchCommunities error:', error);
+      set({ communities: [], error: (error as Error).message, isLoading: false });
+    }
+  },
 
   // ==================== 住戶 ====================
   fetchResidents: async () => {
@@ -316,8 +337,9 @@ export const useDataStore = create<DataState>((set, get) => ({
 
   // ==================== 初始化 ====================
   initializeData: async () => {
-    const { fetchResidents, fetchVendors, fetchRepairs, fetchMeetings } = get();
+    const { fetchCommunities, fetchResidents, fetchVendors, fetchRepairs, fetchMeetings } = get();
     await Promise.all([
+      fetchCommunities(),
       fetchResidents(),
       fetchVendors(),
       fetchRepairs(),

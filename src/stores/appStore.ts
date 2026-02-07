@@ -17,6 +17,7 @@ interface AppState {
   userRole: ResidentRoleLabel | null;
   currentResidentId: string | null;
   currentResident: Resident | null;
+  currentCommunityId: string | null;
   registrationStatus: RegistrationStatus;
 
   // 導航狀態
@@ -27,6 +28,7 @@ interface AppState {
   // 動作
   initializeLiff: () => Promise<void>;
   detectUserRole: (lineUserId: string) => Promise<void>;
+  setCommunityId: (id: string) => void;
   setCurrentScreen: (screen: string) => void;
   setSelectedResident: (resident: Resident | null) => void;
   setSelectedVendor: (vendor: Vendor | null) => void;
@@ -48,6 +50,7 @@ export const useAppStore = create<AppState>((set) => ({
   userRole: null,
   currentResidentId: null,
   currentResident: null,
+  currentCommunityId: null,
   registrationStatus: 'unknown',
 
   currentScreen: 'home',
@@ -97,6 +100,7 @@ export const useAppStore = create<AppState>((set) => ({
           userRole: matched.role,
           currentResidentId: matched.id,
           currentResident: matched,
+          currentCommunityId: matched.communityId || null,
           registrationStatus: 'registered',
         });
       } else {
@@ -116,6 +120,11 @@ export const useAppStore = create<AppState>((set) => ({
         registrationStatus: 'unregistered',
       });
     }
+  },
+
+  // 設定當前社區
+  setCommunityId: (id: string) => {
+    set({ currentCommunityId: id });
   },
 
   // 開發用：手動切換角色
