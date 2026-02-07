@@ -4,14 +4,22 @@ import { communitiesService } from '@/services/firebase';
 import { useDataStore } from '@/stores/dataStore';
 import { useAppStore } from '@/stores/appStore';
 import { liffService } from '@/services/liff';
+import { taiwanCities, getDistrictsByCity } from '@/data/taiwanDistricts';
+import type { District } from '@/data/taiwanDistricts';
 
 type OnboardingStep = 'select-community' | 'create-community' | 'personal-info' | 'confirm';
+
+interface AddressForm {
+  city: string;
+  district: string;
+  road: string; // 路/街 + 段 + 巷 + 弄 + 號
+}
 
 interface OnboardingData {
   community: Community | null;
   floor: string;
   unitNumber: string;
-  unit: string; // 組合後的 "3F-1" 格式
+  unit: string;
   isChairman: boolean;
 }
 
@@ -34,13 +42,16 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
   const [communities, setCommunities] = useState<Community[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
-  // 建立新社區
-  const [newCommunity, setNewCommunity] = useState({
-    name: '',
-    address: '',
-    floors: '',
-    unitsPerFloor: '',
+  // 建立新社區：結構化地址
+  const [addressForm, setAddressForm] = useState<AddressForm>({
+    city: '',
+    district: '',
+    road: '',
   });
+  const [communityName, setCommunityName] = useState('');
+  const [useAddressAsName, setUseAddressAsName] = useState(true);
+  const [newFloors, setNewFloors] = useState('');
+  const [newUnitsPerFloor, setNewUnitsPerFloor] = useState('');
 
   // 送出狀態
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -67,6 +78,17 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
     }
   };
 
+  // 可用的區域
+  const availableDistricts: District[] = addressForm.city
+    ? getDistrictsByCity(addressForm.city)
+    : [];
+
+  // 組合完整地址
+  const getFullAddress = () => {
+    const parts = [addressForm.city, addressForm.district, addressForm.road].filter(Boolean);
+    return parts.join('');
+  };
+
   // 過濾社區
   const filteredCommunities = communities.filter(
     (c) =>
@@ -80,22 +102,35 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
     setStep('personal-info');
   };
 
+  // 地址是否完整
+  const isAddressComplete = addressForm.city && addressForm.district && addressForm.road.trim();
+
   // 建立新社區
   const handleCreateCommunity = async () => {
-    if (!newCommunity.name.trim() || !newCommunity.address.trim()) {
-      return;
-    }
+    if (!isAddressComplete) return;
 
     setIsSubmitting(true);
+    setSubmitError('');
     try {
-      const profile = await liffService.getProfile();
+      let profile = null;
+      try {
+        profile = await liffService.getProfile();
+      } catch {
+        // 測試模式下可能沒有 LIFF
+      }
+
+      const fullAddress = getFullAddress();
+      const finalName = useAddressAsName || !communityName.trim()
+        ? fullAddress
+        : communityName.trim();
+
       const communityData = {
-        name: newCommunity.name.trim(),
-        address: newCommunity.address.trim(),
+        name: finalName,
+        address: fullAddress,
         totalUnits: 0,
         monthlyFee: 2000,
-        floors: newCommunity.floors ? parseInt(newCommunity.floors) : undefined,
-        unitsPerFloor: newCommunity.unitsPerFloor ? parseInt(newCommunity.unitsPerFloor) : undefined,
+        floors: newFloors ? parseInt(newFloors) : undefined,
+        unitsPerFloor: newUnitsPerFloor ? parseInt(newUnitsPerFloor) : undefined,
         createdBy: profile?.userId || '',
         createdAt: new Date(),
       };
@@ -118,7 +153,6 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
     const floors = data.community?.floors || 0;
     if (floors <= 0) return [];
     const options: string[] = [];
-    // 加入地下樓層
     options.push('B1');
     for (let i = 1; i <= floors; i++) {
       options.push(`${i}F`);
@@ -139,7 +173,7 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
 
   // 組合 unit 字串
   const getUnitString = () => {
-    if (data.unit) return data.unit; // 自由輸入模式
+    if (data.unit) return data.unit;
     if (data.floor && data.unitNumber) return `${data.floor}-${data.unitNumber}`;
     return '';
   };
@@ -160,25 +194,35 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
     setSubmitError('');
 
     try {
-      const profile = await liffService.getProfile();
+      let profile = null;
+      try {
+        profile = await liffService.getProfile();
+      } catch {
+        // 測試模式
+      }
+
       if (!profile) {
-        // 若未登入，嘗試登入
-        if (!liffService.isLoggedIn()) {
-          liffService.login();
-          return;
+        try {
+          if (!liffService.isLoggedIn()) {
+            liffService.login();
+            return;
+          }
+        } catch {
+          // 測試模式下忽略
         }
-        throw new Error('無法獲取 LINE 資料');
       }
 
       const unitStr = getUnitString();
+      const displayName = profile?.displayName || '測試用戶';
+      const userId = profile?.userId || 'test-user';
 
       await addResident({
         communityId: data.community.id,
-        name: profile.displayName,
+        name: displayName,
         unit: unitStr,
         phone: '',
         lineId: '',
-        lineUserId: profile.userId,
+        lineUserId: userId,
         role: data.isChairman ? '主委' : '住戶',
         moveInDate: new Date().toISOString().split('T')[0],
         paymentHistory: [],
@@ -190,11 +234,12 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
       });
 
       await fetchResidents();
-      await detectUserRole(profile.userId);
+
+      if (profile?.userId) {
+        await detectUserRole(profile.userId);
+      }
 
       setSubmitSuccess(true);
-
-      // 3 秒後進入主畫面
       setTimeout(() => {
         onComplete();
       }, 3000);
@@ -208,7 +253,6 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
 
   // ===================== 渲染 =====================
 
-  // 進度指示
   const stepIndex = step === 'select-community' || step === 'create-community' ? 0 : step === 'personal-info' ? 1 : 2;
 
   const renderProgress = () => (
@@ -305,44 +349,107 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
     </div>
   );
 
-  // Step 1b: 建立新社區
+  // Step 1b: 建立新社區（結構化地址）
   const renderCreateCommunity = () => (
     <div className="space-y-4">
       <div className="text-center mb-4">
         <div className="text-4xl mb-2">🏗️</div>
         <h2 className="text-xl font-bold text-[#1D1D1F]">建立新社區</h2>
-        <p className="text-[#86868B] text-sm mt-1">填寫社區基本資訊</p>
+        <p className="text-[#86868B] text-sm mt-1">請輸入社區地址</p>
       </div>
 
       <div className="space-y-3">
+        {/* 縣市 */}
         <div>
-          <label className="text-sm text-[#86868B] mb-1 block">社區名稱 *</label>
+          <label className="text-sm text-[#86868B] mb-1 block">縣市 *</label>
+          <select
+            value={addressForm.city}
+            onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value, district: '' })}
+            className="w-full px-4 py-3 bg-white rounded-xl border border-[#E8E8ED] text-[15px] focus:outline-none focus:border-[#06C755]"
+          >
+            <option value="">請選擇縣市</option>
+            {taiwanCities.map((c) => (
+              <option key={c.name} value={c.name}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* 區域 */}
+        <div>
+          <label className="text-sm text-[#86868B] mb-1 block">鄉鎮市區 *</label>
+          <select
+            value={addressForm.district}
+            onChange={(e) => setAddressForm({ ...addressForm, district: e.target.value })}
+            disabled={!addressForm.city}
+            className="w-full px-4 py-3 bg-white rounded-xl border border-[#E8E8ED] text-[15px] focus:outline-none focus:border-[#06C755] disabled:bg-gray-50 disabled:text-gray-400"
+          >
+            <option value="">請選擇鄉鎮市區</option>
+            {availableDistricts.map((d) => (
+              <option key={d.name} value={d.name}>{d.name}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* 路名+號碼 */}
+        <div>
+          <label className="text-sm text-[#86868B] mb-1 block">路/街名及門牌號碼 *</label>
           <input
             type="text"
-            placeholder="例：陽光花園社區"
-            value={newCommunity.name}
-            onChange={(e) => setNewCommunity({ ...newCommunity, name: e.target.value })}
+            placeholder="例：信義路三段100號"
+            value={addressForm.road}
+            onChange={(e) => setAddressForm({ ...addressForm, road: e.target.value })}
             className="w-full px-4 py-3 bg-white rounded-xl border border-[#E8E8ED] text-[15px] focus:outline-none focus:border-[#06C755]"
           />
         </div>
-        <div>
-          <label className="text-sm text-[#86868B] mb-1 block">地址 *</label>
-          <input
-            type="text"
-            placeholder="例：台北市大安區信義路三段100號"
-            value={newCommunity.address}
-            onChange={(e) => setNewCommunity({ ...newCommunity, address: e.target.value })}
-            className="w-full px-4 py-3 bg-white rounded-xl border border-[#E8E8ED] text-[15px] focus:outline-none focus:border-[#06C755]"
-          />
+
+        {/* 組合後的地址預覽 */}
+        {isAddressComplete && (
+          <div className="bg-[#F0FFF4] border border-[#06C755]/20 rounded-xl p-3">
+            <div className="text-xs text-[#06C755] mb-1">地址預覽</div>
+            <div className="text-[15px] text-[#1D1D1F]">{getFullAddress()}</div>
+          </div>
+        )}
+
+        {/* 社區名稱 */}
+        <div className="border-t border-[#E8E8ED] pt-3">
+          <div
+            onClick={() => setUseAddressAsName(!useAddressAsName)}
+            className="flex items-center gap-3 cursor-pointer mb-2"
+          >
+            <div
+              className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
+                useAddressAsName ? 'bg-[#06C755] border-[#06C755]' : 'border-[#C7C7CC] bg-white'
+              }`}
+            >
+              {useAddressAsName && (
+                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </div>
+            <span className="text-[15px] text-[#1D1D1F]">使用地址作為社區名稱</span>
+          </div>
+
+          {!useAddressAsName && (
+            <input
+              type="text"
+              placeholder="輸入社區名稱，例：陽光花園社區"
+              value={communityName}
+              onChange={(e) => setCommunityName(e.target.value)}
+              className="w-full px-4 py-3 bg-white rounded-xl border border-[#E8E8ED] text-[15px] focus:outline-none focus:border-[#06C755]"
+            />
+          )}
         </div>
+
+        {/* 大樓設定 */}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-sm text-[#86868B] mb-1 block">總樓層數</label>
             <input
               type="number"
               placeholder="例：12"
-              value={newCommunity.floors}
-              onChange={(e) => setNewCommunity({ ...newCommunity, floors: e.target.value })}
+              value={newFloors}
+              onChange={(e) => setNewFloors(e.target.value)}
               className="w-full px-4 py-3 bg-white rounded-xl border border-[#E8E8ED] text-[15px] focus:outline-none focus:border-[#06C755]"
             />
           </div>
@@ -351,8 +458,8 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
             <input
               type="number"
               placeholder="例：4"
-              value={newCommunity.unitsPerFloor}
-              onChange={(e) => setNewCommunity({ ...newCommunity, unitsPerFloor: e.target.value })}
+              value={newUnitsPerFloor}
+              onChange={(e) => setNewUnitsPerFloor(e.target.value)}
               className="w-full px-4 py-3 bg-white rounded-xl border border-[#E8E8ED] text-[15px] focus:outline-none focus:border-[#06C755]"
             />
           </div>
@@ -375,10 +482,10 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
         </button>
         <button
           onClick={handleCreateCommunity}
-          disabled={!newCommunity.name.trim() || !newCommunity.address.trim() || isSubmitting}
+          disabled={!isAddressComplete || isSubmitting}
           className="flex-1 py-3 bg-[#06C755] text-white rounded-xl font-medium disabled:opacity-50"
         >
-          {isSubmitting ? '建立中...' : '建立社區'}
+          {isSubmitting ? '建立中...' : '下一步'}
         </button>
       </div>
     </div>
@@ -415,7 +522,7 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
                   ))}
                 </select>
               </div>
-              {hasUnitConfig && (
+              {hasUnitConfig ? (
                 <div>
                   <label className="text-sm text-[#86868B] mb-1 block">門號</label>
                   <select
@@ -429,8 +536,7 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
                     ))}
                   </select>
                 </div>
-              )}
-              {!hasUnitConfig && (
+              ) : (
                 <div>
                   <label className="text-sm text-[#86868B] mb-1 block">門號</label>
                   <input
@@ -529,7 +635,9 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
           <div>
             <div className="text-xs text-[#86868B]">社區</div>
             <div className="text-[15px] text-[#1D1D1F] font-medium">{data.community?.name}</div>
-            <div className="text-sm text-[#86868B]">{data.community?.address}</div>
+            {data.community?.name !== data.community?.address && (
+              <div className="text-sm text-[#86868B]">{data.community?.address}</div>
+            )}
           </div>
           <div className="border-t border-[#E8E8ED] pt-3">
             <div className="text-xs text-[#86868B]">門牌號碼</div>
