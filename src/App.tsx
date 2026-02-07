@@ -49,9 +49,10 @@ const App: React.FC = () => {
     const initRoleAndRegister = async () => {
       if (isLoading) return;
 
-      // Demo 模式（沒有 LIFF）：開發環境預設為主委，生產環境預設為住戶
+      // Demo 模式（沒有 LIFF）：預設為主委以便測試
+      // 真正的權限控制是透過 LINE LIFF + Firestore 角色偵測
       if (!userProfile && error) {
-        devSetRole(import.meta.env.DEV ? '主委' : '住戶');
+        devSetRole('主委');
         return;
       }
 
@@ -211,10 +212,10 @@ const App: React.FC = () => {
 
   return (
     <div className="max-w-md mx-auto bg-[#F5F5F7] min-h-screen font-[-apple-system,BlinkMacSystemFont,sans-serif]">
-      {/* 開發用角色切換器（僅在開發環境顯示） */}
-      {import.meta.env.DEV && (error || !userProfile) && (
+      {/* 角色切換器：開發環境 或 網址帶 ?dev=true 時顯示 */}
+      {(import.meta.env.DEV || new URLSearchParams(window.location.search).get('dev') === 'true') && (error || !userProfile) && (
         <div className="fixed top-0 left-0 right-0 bg-yellow-100 border-b border-yellow-300 px-3 py-1 z-50 flex items-center justify-between max-w-md mx-auto">
-          <span className="text-xs text-yellow-800">DEV 模式 - 角色：</span>
+          <span className="text-xs text-yellow-800">測試模式 - 角色：</span>
           <div className="flex gap-1">
             {(['主委', '財委', '監委', '住戶'] as ResidentRoleLabel[]).map((role) => (
               <button
