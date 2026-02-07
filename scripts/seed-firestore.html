@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Firestore 初始化資料</title>
+  <style>
+    body { font-family: -apple-system, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+    button { background: #06C755; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 16px; cursor: pointer; }
+    button:disabled { background: #ccc; }
+    #log { background: #1D1D1F; color: #34C759; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 13px; white-space: pre-wrap; max-height: 400px; overflow-y: auto; margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <h1>🔥 Firestore 初始化資料</h1>
+  <p>點擊按鈕將 mock 資料寫入你的 Firestore 資料庫</p>
+  <button id="seedBtn">開始寫入資料</button>
+  <div id="log"></div>
+
+  <!-- Firebase compat SDK (不需要 module，直接用全域變數) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    var firebaseConfig = {
+      apiKey: "AIzaSyBWm5rKT3535klcNVtWCK6oosdr2BO-ZrQ",
+      authDomain: "hoa-line-app-3e2f1.firebaseapp.com",
+      projectId: "hoa-line-app-3e2f1",
+      storageBucket: "hoa-line-app-3e2f1.firebasestorage.app",
+      messagingSenderId: "225045051582",
+      appId: "1:225045051582:web:9235d2cddff542456786ef",
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    var db = firebase.firestore();
+
+    function log(msg) {
+      document.getElementById('log').textContent += msg + '\n';
+    }
+
+    var residents = [
+      { unit: '3F-1', name: '王大明', phone: '0912-345-678', lineId: 'wang.daming', role: '主委', moveInDate: '2019-03-15', paymentHistory: [
+        { year: 2024, month: 1, paid: true, amount: 2000, paidDate: '2024-01-05' },
+        { year: 2024, month: 2, paid: true, amount: 2000, paidDate: '2024-02-03' },
+        { year: 2024, month: 3, paid: true, amount: 2000, paidDate: '2024-03-08' },
+        { year: 2024, month: 4, paid: false, amount: 2000, paidDate: null },
+        { year: 2024, month: 5, paid: false, amount: 2000, paidDate: null },
+      ]},
+      { unit: '5F-2', name: '李小華', phone: '0923-456-789', lineId: 'lee.xiaohua', role: '財委', moveInDate: '2020-06-01', paymentHistory: [
+        { year: 2024, month: 1, paid: true, amount: 2000, paidDate: '2024-01-10' },
+        { year: 2024, month: 2, paid: true, amount: 2000, paidDate: '2024-02-12' },
+        { year: 2024, month: 3, paid: true, amount: 2000, paidDate: '2024-03-05' },
+        { year: 2024, month: 4, paid: true, amount: 2000, paidDate: '2024-04-08' },
+        { year: 2024, month: 5, paid: true, amount: 2000, paidDate: '2024-05-02' },
+      ]},
+      { unit: '2F-1', name: '張美玲', phone: '0934-567-890', lineId: 'zhang.meiling', role: '住戶', moveInDate: '2021-01-20', paymentHistory: [
+        { year: 2024, month: 1, paid: true, amount: 2000, paidDate: '2024-01-15' },
+        { year: 2024, month: 2, paid: false, amount: 2000, paidDate: null },
+        { year: 2024, month: 3, paid: false, amount: 2000, paidDate: null },
+        { year: 2024, month: 4, paid: false, amount: 2000, paidDate: null },
+        { year: 2024, month: 5, paid: false, amount: 2000, paidDate: null },
+      ]},
+      { unit: '7F-1', name: '陳建宏', phone: '0945-678-901', lineId: 'chen.jianhong', role: '監委', moveInDate: '2018-09-10', paymentHistory: [
+        { year: 2024, month: 1, paid: true, amount: 2000, paidDate: '2024-01-03' },
+        { year: 2024, month: 2, paid: true, amount: 2000, paidDate: '2024-02-01' },
+        { year: 2024, month: 3, paid: true, amount: 2000, paidDate: '2024-03-02' },
+        { year: 2024, month: 4, paid: true, amount: 2000, paidDate: '2024-04-05' },
+        { year: 2024, month: 5, paid: true, amount: 2000, paidDate: '2024-05-01' },
+      ]},
+      { unit: '4F-2', name: '林志玲', phone: '0956-789-012', lineId: 'lin.zhiling', role: '住戶', moveInDate: '2022-04-01', paymentHistory: [
+        { year: 2024, month: 1, paid: true, amount: 2000, paidDate: '2024-01-20' },
+        { year: 2024, month: 2, paid: true, amount: 2000, paidDate: '2024-02-18' },
+        { year: 2024, month: 3, paid: true, amount: 2000, paidDate: '2024-03-22' },
+        { year: 2024, month: 4, paid: false, amount: 2000, paidDate: null },
+        { year: 2024, month: 5, paid: false, amount: 2000, paidDate: null },
+      ]},
+    ];
+
+    var vendors = [
+      { name: '永信電梯', category: '電梯維護', contact: '陳經理', phone: '02-2345-6789', lineId: 'yongxin.elevator', contractStart: '2023-01-01', contractEnd: '2025-12-31', rating: 4.5, notes: '每月定期保養，反應快速', invoices: [
+        { id: 'INV001', date: '2024-03-15', amount: 5000, description: '3月保養', image: null },
+        { id: 'INV002', date: '2024-04-15', amount: 5000, description: '4月保養', image: null },
+      ], serviceRecords: [
+        { date: '2024-04-20', type: '緊急維修', workers: 2, duration: '2小時', description: '電梯異音處理', photos: [] },
+        { date: '2024-03-15', type: '定期保養', workers: 1, duration: '1小時', description: '例行保養', photos: [] },
+      ]},
+      { name: '大安清潔', category: '清潔服務', contact: '林小姐', phone: '02-3456-7890', lineId: 'daan.clean', contractStart: '2024-01-01', contractEnd: '2024-12-31', rating: 4.0, notes: '每週二、五打掃公共區域', invoices: [
+        { id: 'INV003', date: '2024-04-30', amount: 8000, description: '4月清潔費', image: null },
+      ], serviceRecords: [
+        { date: '2024-05-03', type: '例行清潔', workers: 2, duration: '3小時', description: '公共區域清潔', photos: [] },
+      ]},
+      { name: '台北水電行', category: '水電維修', contact: '張師傅', phone: '0922-333-444', lineId: 'taipei.plumber', contractStart: null, contractEnd: null, rating: 4.8, notes: '叫修制，收費合理', invoices: [], serviceRecords: [
+        { date: '2024-04-10', type: '維修', workers: 1, duration: '1.5小時', description: '地下室水管漏水修繕', photos: [] },
+      ]},
+    ];
+
+    var repairs = [
+      { title: '電梯異音', description: '電梯運行時有異常聲音', reportedBy: '王大明', reportedDate: '2024-05-01', status: 'completed', priority: 'high', assignedVendor: '永信電梯', completedDate: '2024-05-03', cost: 3500, photos: [] },
+      { title: '地下室漏水', description: 'B1停車場天花板滲水', reportedBy: '李小華', reportedDate: '2024-05-05', status: 'in_progress', priority: 'high', assignedVendor: '台北水電行', completedDate: null, cost: null, photos: [] },
+      { title: '大廳燈泡更換', description: '大廳有兩盞燈不亮', reportedBy: '張美玲', reportedDate: '2024-05-08', status: 'pending', priority: 'low', assignedVendor: null, completedDate: null, cost: null, photos: [] },
+    ];
+
+    var meetings = [
+      { title: '第三屆第五次管委會', date: '2024-05-01', time: '19:30', duration: '1:45:00', location: '社區會議室', attendees: ['王大明','李小華','陳建宏'], absentees: ['張美玲'], hasAudio: true, hasTranscript: true, summary: '本次會議討論電梯維修、清潔合約續約及管理費調整三項議題。', resolutions: ['通過電梯維修案，預算三萬五千元','清潔合約續約一年，費用維持不變','管理費調整案保留至區權會討論'] },
+      { title: '第三屆第四次管委會', date: '2024-04-03', time: '19:30', duration: '1:20:00', location: '社區會議室', attendees: ['王大明','李小華','陳建宏','張美玲'], absentees: [], hasAudio: true, hasTranscript: true, summary: '討論春節社區佈置、公共區域消毒等事項。', resolutions: ['春節佈置預算一萬元','安排月底全社區消毒'] },
+    ];
+
+    document.getElementById('seedBtn').addEventListener('click', async function() {
+      var btn = document.getElementById('seedBtn');
+      btn.disabled = true;
+      btn.textContent = '寫入中...';
+      document.getElementById('log').textContent = '';
+
+      try {
+        log('🔥 開始寫入 Firestore...\n');
+
+        log('📋 寫入住戶資料...');
+        for (var i = 0; i < residents.length; i++) {
+          var r = residents[i];
+          var ref = await db.collection('residents').add(Object.assign({}, r, { createdAt: new Date().toISOString() }));
+          log('  ✓ ' + r.name + ' (' + r.unit + ') → ' + ref.id);
+        }
+
+        log('\n🏢 寫入廠商資料...');
+        for (var i = 0; i < vendors.length; i++) {
+          var v = vendors[i];
+          var ref = await db.collection('vendors').add(Object.assign({}, v, { createdAt: new Date().toISOString() }));
+          log('  ✓ ' + v.name + ' → ' + ref.id);
+        }
+
+        log('\n🔧 寫入維修單資料...');
+        for (var i = 0; i < repairs.length; i++) {
+          var rp = repairs[i];
+          var ref = await db.collection('repairs').add(Object.assign({}, rp, { createdAt: new Date().toISOString() }));
+          log('  ✓ ' + rp.title + ' → ' + ref.id);
+        }
+
+        log('\n📅 寫入會議資料...');
+        for (var i = 0; i < meetings.length; i++) {
+          var m = meetings[i];
+          var ref = await db.collection('meetings').add(Object.assign({}, m, { createdAt: new Date().toISOString() }));
+          log('  ✓ ' + m.title + ' → ' + ref.id);
+        }
+
+        log('\n✅ 全部完成！共寫入：');
+        log('   住戶：' + residents.length + ' 筆');
+        log('   廠商：' + vendors.length + ' 筆');
+        log('   維修單：' + repairs.length + ' 筆');
+        log('   會議：' + meetings.length + ' 筆');
+
+        btn.textContent = '✅ 寫入完成！';
+      } catch (error) {
+        log('\n❌ 錯誤: ' + error.message);
+        btn.textContent = '重試';
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
