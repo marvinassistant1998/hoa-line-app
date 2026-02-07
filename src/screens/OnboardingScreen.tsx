@@ -137,6 +137,15 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
       }
 
       const fullAddress = getFullAddress();
+
+      // 檢查是否已存在相同地址的社區
+      const existing = communities.find((c) => c.address === fullAddress);
+      if (existing) {
+        setData({ ...data, community: existing, floor: '', unitNumber: '', unit: '' });
+        setStep('personal-info');
+        return;
+      }
+
       const finalName = useAddressAsName || !communityName.trim()
         ? fullAddress
         : communityName.trim();
@@ -154,6 +163,7 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
 
       const id = await communitiesService.create(communityData);
       const created: Community = { ...communityData, id };
+      setCommunities([...communities, created]);
 
       setData({ ...data, community: created, floor: '', unitNumber: '', unit: '' });
       setStep('personal-info');
