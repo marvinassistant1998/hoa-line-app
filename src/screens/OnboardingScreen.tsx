@@ -4,9 +4,16 @@ import { communitiesService } from '@/services/firebase';
 import { useDataStore } from '@/stores/dataStore';
 import { useAppStore } from '@/stores/appStore';
 import { liffService } from '@/services/liff';
-import { useAddressSearch } from '@/hooks/useAddressSearch';
+import { taiwanCities, getDistrictsByCity } from '@/data/taiwanDistricts';
+import type { District } from '@/data/taiwanDistricts';
 
 type OnboardingStep = 'select-community' | 'create-community' | 'personal-info' | 'confirm';
+
+interface AddressForm {
+  city: string;
+  district: string;
+  road: string; // 路/街 + 段 + 巷 + 弄 + 號
+}
 
 interface OnboardingData {
   community: Community | null;
@@ -30,16 +37,17 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
     isChairman: false,
   });
 
-  // 搜尋現有社區
+  // 搜尋社區
   const [searchKeyword, setSearchKeyword] = useState('');
   const [communities, setCommunities] = useState<Community[]>([]);
-  const [isLoadingCommunities, setIsLoadingCommunities] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
-  // 建立新社區：地址 autocomplete
-  const [addressInput, setAddressInput] = useState('');
-  const [selectedAddress, setSelectedAddress] = useState('');
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const { suggestions, isSearching: isAddressSearching, search: searchAddress, clear: clearSuggestions } = useAddressSearch();
+  // 建立新社區：結構化地址
+  const [addressForm, setAddressForm] = useState<AddressForm>({
+    city: '',
+    district: '',
+    road: '',
+  });
   const [communityName, setCommunityName] = useState('');
   const [useAddressAsName, setUseAddressAsName] = useState(true);
   const [newFloors, setNewFloors] = useState('');
@@ -59,15 +67,26 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
   }, []);
 
   const loadCommunities = async () => {
-    setIsLoadingCommunities(true);
+    setIsSearching(true);
     try {
       const all = await communitiesService.getAll();
       setCommunities(all);
     } catch (err) {
       console.error('載入社區失敗:', err);
     } finally {
-      setIsLoadingCommunities(false);
+      setIsSearching(false);
     }
+  };
+
+  // 可用的區域
+  const availableDistricts: District[] = addressForm.city
+    ? getDistrictsByCity(addressForm.city)
+    : [];
+
+  // 組合完整地址
+  const getFullAddress = () => {
+    const parts = [addressForm.city, addressForm.district, addressForm.road].filter(Boolean);
+    return parts.join('');
   };
 
   // 過濾社區
@@ -83,35 +102,12 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
     setStep('personal-info');
   };
 
-  // 地址輸入時觸發 autocomplete
-  const handleAddressInput = (value: string) => {
-    setAddressInput(value);
-    setSelectedAddress('');
-    setShowSuggestions(true);
-    searchAddress(value);
-  };
-
-  // 選擇推薦地址
-  const selectSuggestion = (suggestion: { description: string }) => {
-    // 去掉尾端的國家名稱
-    const addr = suggestion.description
-      .replace(/台灣$/i, '')
-      .replace(/Taiwan$/i, '')
-      .trim();
-
-    setAddressInput(addr);
-    setSelectedAddress(addr);
-    setShowSuggestions(false);
-    clearSuggestions();
-  };
-
-  // 確認地址是否已填寫
-  const isAddressReady = selectedAddress.trim().length > 0 || addressInput.trim().length >= 5;
+  // 地址是否完整
+  const isAddressComplete = addressForm.city && addressForm.district && addressForm.road.trim();
 
   // 建立新社區
   const handleCreateCommunity = async () => {
-    const finalAddress = selectedAddress || addressInput.trim();
-    if (!finalAddress) return;
+    if (!isAddressComplete) return;
 
     setIsSubmitting(true);
     setSubmitError('');
@@ -120,16 +116,17 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
       try {
         profile = await liffService.getProfile();
       } catch {
-        // 測試模式
+        // 測試模式下可能沒有 LIFF
       }
 
+      const fullAddress = getFullAddress();
       const finalName = useAddressAsName || !communityName.trim()
-        ? finalAddress
+        ? fullAddress
         : communityName.trim();
 
       const communityData = {
         name: finalName,
-        address: finalAddress,
+        address: fullAddress,
         totalUnits: 0,
         monthlyFee: 2000,
         floors: newFloors ? parseInt(newFloors) : undefined,
@@ -231,6 +228,7 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
         paymentHistory: [],
       });
 
+      // 更新社區住戶數
       await communitiesService.update(data.community.id, {
         totalUnits: (data.community.totalUnits || 0) + 1,
       });
@@ -312,7 +310,7 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
       </div>
 
       {/* 社區列表 */}
-      {isLoadingCommunities ? (
+      {isSearching ? (
         <div className="text-center py-8">
           <div className="w-8 h-8 border-3 border-[#06C755] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
           <p className="text-[#86868B] text-sm">載入中...</p>
@@ -351,84 +349,65 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
     </div>
   );
 
-  // Step 1b: 建立新社區（智慧地址搜尋）
+  // Step 1b: 建立新社區（結構化地址）
   const renderCreateCommunity = () => (
     <div className="space-y-4">
       <div className="text-center mb-4">
         <div className="text-4xl mb-2">🏗️</div>
         <h2 className="text-xl font-bold text-[#1D1D1F]">建立新社區</h2>
-        <p className="text-[#86868B] text-sm mt-1">輸入社區地址，系統會自動推薦</p>
+        <p className="text-[#86868B] text-sm mt-1">請輸入社區地址</p>
       </div>
 
       <div className="space-y-3">
-        {/* 地址搜尋欄位 */}
-        <div className="relative">
-          <label className="text-sm text-[#86868B] mb-1 block">社區地址 *</label>
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="輸入地址，例：台北市大安區信義路..."
-              value={addressInput}
-              onChange={(e) => handleAddressInput(e.target.value)}
-              onFocus={() => {
-                if (suggestions.length > 0) setShowSuggestions(true);
-              }}
-              className="w-full px-4 py-3 bg-white rounded-xl border border-[#E8E8ED] text-[15px] focus:outline-none focus:border-[#06C755] pr-10"
-            />
-            {isAddressSearching && (
-              <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                <div className="w-5 h-5 border-2 border-[#06C755] border-t-transparent rounded-full animate-spin" />
-              </div>
-            )}
-            {!isAddressSearching && addressInput && (
-              <button
-                onClick={() => {
-                  setAddressInput('');
-                  setSelectedAddress('');
-                  clearSuggestions();
-                }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#86868B]"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-
-          {/* 推薦下拉選單 */}
-          {showSuggestions && suggestions.length > 0 && (
-            <div className="absolute z-10 w-full mt-1 bg-white rounded-xl border border-[#E8E8ED] shadow-lg max-h-[240px] overflow-y-auto">
-              {suggestions.map((s, i) => (
-                <button
-                  key={s.placeId || i}
-                  onClick={() => selectSuggestion(s)}
-                  className="w-full text-left px-4 py-3 hover:bg-[#F0FFF4] border-b border-[#F5F5F7] last:border-b-0 transition-colors"
-                >
-                  <div className="text-[14px] text-[#1D1D1F] font-medium">{s.mainText}</div>
-                  {s.secondaryText && (
-                    <div className="text-[12px] text-[#86868B] mt-0.5">{s.secondaryText}</div>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
+        {/* 縣市 */}
+        <div>
+          <label className="text-sm text-[#86868B] mb-1 block">縣市 *</label>
+          <select
+            value={addressForm.city}
+            onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value, district: '' })}
+            className="w-full px-4 py-3 bg-white rounded-xl border border-[#E8E8ED] text-[15px] focus:outline-none focus:border-[#06C755]"
+          >
+            <option value="">請選擇縣市</option>
+            {taiwanCities.map((c) => (
+              <option key={c.name} value={c.name}>{c.name}</option>
+            ))}
+          </select>
         </div>
 
-        {/* 選中的地址確認 */}
-        {selectedAddress && (
-          <div className="bg-[#F0FFF4] border border-[#06C755]/20 rounded-xl p-3 flex items-center gap-2">
-            <span className="text-[#06C755] text-lg">✓</span>
-            <div>
-              <div className="text-xs text-[#06C755]">已選擇地址</div>
-              <div className="text-[15px] text-[#1D1D1F]">{selectedAddress}</div>
-            </div>
-          </div>
-        )}
+        {/* 區域 */}
+        <div>
+          <label className="text-sm text-[#86868B] mb-1 block">鄉鎮市區 *</label>
+          <select
+            value={addressForm.district}
+            onChange={(e) => setAddressForm({ ...addressForm, district: e.target.value })}
+            disabled={!addressForm.city}
+            className="w-full px-4 py-3 bg-white rounded-xl border border-[#E8E8ED] text-[15px] focus:outline-none focus:border-[#06C755] disabled:bg-gray-50 disabled:text-gray-400"
+          >
+            <option value="">請選擇鄉鎮市區</option>
+            {availableDistricts.map((d) => (
+              <option key={d.name} value={d.name}>{d.name}</option>
+            ))}
+          </select>
+        </div>
 
-        {/* 找不到地址的提示 */}
-        {!selectedAddress && addressInput.length >= 5 && (
-          <p className="text-xs text-[#86868B]">
-            找不到推薦？沒關係，你可以直接輸入完整地址後按「下一步」
-          </p>
+        {/* 路名+號碼 */}
+        <div>
+          <label className="text-sm text-[#86868B] mb-1 block">路/街名及門牌號碼 *</label>
+          <input
+            type="text"
+            placeholder="例：信義路三段100號"
+            value={addressForm.road}
+            onChange={(e) => setAddressForm({ ...addressForm, road: e.target.value })}
+            className="w-full px-4 py-3 bg-white rounded-xl border border-[#E8E8ED] text-[15px] focus:outline-none focus:border-[#06C755]"
+          />
+        </div>
+
+        {/* 組合後的地址預覽 */}
+        {isAddressComplete && (
+          <div className="bg-[#F0FFF4] border border-[#06C755]/20 rounded-xl p-3">
+            <div className="text-xs text-[#06C755] mb-1">地址預覽</div>
+            <div className="text-[15px] text-[#1D1D1F]">{getFullAddress()}</div>
+          </div>
         )}
 
         {/* 社區名稱 */}
@@ -503,7 +482,7 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
         </button>
         <button
           onClick={handleCreateCommunity}
-          disabled={!isAddressReady || isSubmitting}
+          disabled={!isAddressComplete || isSubmitting}
           className="flex-1 py-3 bg-[#06C755] text-white rounded-xl font-medium disabled:opacity-50"
         >
           {isSubmitting ? '建立中...' : '下一步'}
