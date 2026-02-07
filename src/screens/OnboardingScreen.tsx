@@ -63,22 +63,14 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
   const { addResident, fetchResidents } = useDataStore();
-  const { detectUserRole } = useAppStore();
+  const { detectUserRole, userProfile } = useAppStore();
 
-  // 自動帶入 LINE 用戶名稱
+  // 自動帶入 LINE 用戶名稱（從 appStore 已載入的 profile）
   useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        const profile = await liffService.getProfile();
-        if (profile?.displayName && !data.name) {
-          setData((prev) => ({ ...prev, name: profile.displayName }));
-        }
-      } catch {
-        // 非 LINE 環境，不帶入
-      }
-    };
-    loadProfile();
-  }, []);
+    if (userProfile?.displayName && !data.name) {
+      setData((prev) => ({ ...prev, name: userProfile.displayName }));
+    }
+  }, [userProfile]);
 
   // 取得用戶 GPS 位置
   useEffect(() => {
