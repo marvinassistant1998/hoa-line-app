@@ -153,20 +153,8 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
     const floors = data.community?.floors || 0;
     if (floors <= 0) return [];
     const options: string[] = [];
-    options.push('B1');
     for (let i = 1; i <= floors; i++) {
       options.push(`${i}F`);
-    }
-    return options;
-  };
-
-  // 產生門號選項
-  const unitOptions = () => {
-    const units = data.community?.unitsPerFloor || 0;
-    if (units <= 0) return [];
-    const options: string[] = [];
-    for (let i = 1; i <= units; i++) {
-      options.push(`${i}`);
     }
     return options;
   };
@@ -174,7 +162,7 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
   // 組合 unit 字串
   const getUnitString = () => {
     if (data.unit) return data.unit;
-    if (data.floor && data.unitNumber) return `${data.floor}-${data.unitNumber}`;
+    if (data.floor) return data.floor;
     return '';
   };
 
@@ -395,11 +383,12 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
           <label className="text-sm text-[#86868B] mb-1 block">路/街名及門牌號碼 *</label>
           <input
             type="text"
-            placeholder="例：信義路三段100號"
+            placeholder="例：信義路三段100號 或 100號之3"
             value={addressForm.road}
             onChange={(e) => setAddressForm({ ...addressForm, road: e.target.value })}
             className="w-full px-4 py-3 bg-white rounded-xl border border-[#E8E8ED] text-[15px] focus:outline-none focus:border-[#06C755]"
           />
+          <p className="text-xs text-[#86868B] mt-1">若有「之幾」請一併填寫，例：100號之3</p>
         </div>
 
         {/* 社區名稱 */}
@@ -486,9 +475,7 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
   // Step 2: 填寫個人資訊
   const renderPersonalInfo = () => {
     const floors = floorOptions();
-    const units = unitOptions();
     const hasFloorConfig = floors.length > 0;
-    const hasUnitConfig = units.length > 0;
 
     return (
       <div className="space-y-4">
@@ -500,53 +487,25 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
 
         <div className="space-y-3">
           {hasFloorConfig ? (
-            <>
-              <div>
-                <label className="text-sm text-[#86868B] mb-1 block">樓層</label>
-                <select
-                  value={data.floor}
-                  onChange={(e) => setData({ ...data, floor: e.target.value, unit: '' })}
-                  className="w-full px-4 py-3 bg-white rounded-xl border border-[#E8E8ED] text-[15px] focus:outline-none focus:border-[#06C755]"
-                >
-                  <option value="">請選擇樓層</option>
-                  {floors.map((f) => (
-                    <option key={f} value={f}>{f}</option>
-                  ))}
-                </select>
-              </div>
-              {hasUnitConfig ? (
-                <div>
-                  <label className="text-sm text-[#86868B] mb-1 block">門號</label>
-                  <select
-                    value={data.unitNumber}
-                    onChange={(e) => setData({ ...data, unitNumber: e.target.value, unit: '' })}
-                    className="w-full px-4 py-3 bg-white rounded-xl border border-[#E8E8ED] text-[15px] focus:outline-none focus:border-[#06C755]"
-                  >
-                    <option value="">請選擇門號</option>
-                    {units.map((u) => (
-                      <option key={u} value={u}>{u}</option>
-                    ))}
-                  </select>
-                </div>
-              ) : (
-                <div>
-                  <label className="text-sm text-[#86868B] mb-1 block">門號</label>
-                  <input
-                    type="text"
-                    placeholder="例：1"
-                    value={data.unitNumber}
-                    onChange={(e) => setData({ ...data, unitNumber: e.target.value, unit: '' })}
-                    className="w-full px-4 py-3 bg-white rounded-xl border border-[#E8E8ED] text-[15px] focus:outline-none focus:border-[#06C755]"
-                  />
-                </div>
-              )}
-            </>
+            <div>
+              <label className="text-sm text-[#86868B] mb-1 block">您住在幾樓？</label>
+              <select
+                value={data.floor}
+                onChange={(e) => setData({ ...data, floor: e.target.value, unit: e.target.value })}
+                className="w-full px-4 py-3 bg-white rounded-xl border border-[#E8E8ED] text-[15px] focus:outline-none focus:border-[#06C755]"
+              >
+                <option value="">請選擇樓層</option>
+                {floors.map((f) => (
+                  <option key={f} value={f}>{f}</option>
+                ))}
+              </select>
+            </div>
           ) : (
             <div>
-              <label className="text-sm text-[#86868B] mb-1 block">門牌號碼</label>
+              <label className="text-sm text-[#86868B] mb-1 block">您住在幾樓？</label>
               <input
                 type="text"
-                placeholder="例：3F-1 或 301"
+                placeholder="例：3F 或 12樓"
                 value={data.unit}
                 onChange={(e) => setData({ ...data, unit: e.target.value })}
                 className="w-full px-4 py-3 bg-white rounded-xl border border-[#E8E8ED] text-[15px] focus:outline-none focus:border-[#06C755]"
@@ -632,7 +591,7 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
             )}
           </div>
           <div className="border-t border-[#E8E8ED] pt-3">
-            <div className="text-xs text-[#86868B]">門牌號碼</div>
+            <div className="text-xs text-[#86868B]">樓層</div>
             <div className="text-[15px] text-[#1D1D1F] font-medium">{getUnitString()}</div>
           </div>
           <div className="border-t border-[#E8E8ED] pt-3">
