@@ -1,53 +1,74 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 
 export interface AddressSuggestion {
-  displayName: string;
-  city: string;
-  district: string;
-  road: string;
-  lat: string;
-  lon: string;
+  placeId: string;
+  description: string;
+  mainText: string;
+  secondaryText: string;
 }
 
-// 從 Nominatim 回傳的地址中解析台灣地址結構
-function parseAddress(item: any): AddressSuggestion {
-  const addr = item.address || {};
-  const displayName: string = item.display_name || '';
+// Google Maps Places Autocomplete API Key
+const GOOGLE_MAPS_API_KEY = 'AIzaSyBsLxokM-gArHjXQYUP1k5f89B_EMY-70c';
 
-  // Nominatim 的台灣地址通常在這些欄位
-  const city =
-    addr.city || addr.county || addr.state || '';
-  const district =
-    addr.suburb || addr.town || addr.village || addr.city_district || '';
-  const road = [
-    addr.road || '',
-    addr.house_number ? addr.house_number + '號' : '',
-  ]
-    .filter(Boolean)
-    .join('');
+// 動態載入 Google Maps Script
+let isScriptLoaded = false;
+let isScriptLoading = false;
+const loadCallbacks: (() => void)[] = [];
 
-  return {
-    displayName,
-    city,
-    district,
-    road,
-    lat: item.lat,
-    lon: item.lon,
-  };
+function loadGoogleMapsScript(): Promise<void> {
+  return new Promise((resolve) => {
+    if (isScriptLoaded && window.google?.maps?.places) {
+      resolve();
+      return;
+    }
+
+    if (isScriptLoading) {
+      loadCallbacks.push(resolve);
+      return;
+    }
+
+    isScriptLoading = true;
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&language=zh-TW`;
+    script.async = true;
+    script.onload = () => {
+      isScriptLoaded = true;
+      isScriptLoading = false;
+      resolve();
+      loadCallbacks.forEach((cb) => cb());
+      loadCallbacks.length = 0;
+    };
+    script.onerror = () => {
+      isScriptLoading = false;
+      console.error('Google Maps Script 載入失敗');
+      resolve(); // 不 reject，讓 fallback 機制運作
+    };
+    document.head.appendChild(script);
+  });
 }
 
 export function useAddressSearch() {
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [isReady, setIsReady] = useState(false);
+  const autocompleteServiceRef = useRef<google.maps.places.AutocompleteService | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // 載入 Google Maps
+  useEffect(() => {
+    loadGoogleMapsScript().then(() => {
+      if (window.google?.maps?.places) {
+        autocompleteServiceRef.current = new google.maps.places.AutocompleteService();
+        setIsReady(true);
+      }
+    });
+  }, []);
+
   const search = useCallback((query: string) => {
-    // 清除上一次的 debounce
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
     }
 
-    // 太短不搜尋
     if (query.trim().length < 2) {
       setSuggestions([]);
       return;
@@ -55,32 +76,43 @@ export function useAddressSearch() {
 
     setIsSearching(true);
 
-    debounceRef.current = setTimeout(async () => {
-      try {
-        const encoded = encodeURIComponent(query);
-        const url = `https://nominatim.openstreetmap.org/search?q=${encoded}&format=json&countrycodes=tw&limit=6&addressdetails=1&accept-language=zh-TW`;
+    debounceRef.current = setTimeout(() => {
+      const service = autocompleteServiceRef.current;
 
-        const res = await fetch(url, {
-          headers: {
-            'User-Agent': 'HOA-LINE-App/1.0',
-          },
-        });
-
-        if (!res.ok) throw new Error('搜尋失敗');
-
-        const data = await res.json();
-        const parsed = data
-          .map(parseAddress)
-          .filter((s: AddressSuggestion) => s.city || s.district || s.road);
-
-        setSuggestions(parsed);
-      } catch (err) {
-        console.error('地址搜尋失敗:', err);
-        setSuggestions([]);
-      } finally {
+      if (!service) {
+        // Google Maps 沒載入成功，用 fallback
         setIsSearching(false);
+        setSuggestions([]);
+        return;
       }
-    }, 400); // 400ms debounce
+
+      service.getPlacePredictions(
+        {
+          input: query,
+          componentRestrictions: { country: 'tw' },
+          types: ['address'],
+          language: 'zh-TW',
+        },
+        (predictions, status) => {
+          setIsSearching(false);
+
+          if (
+            status === google.maps.places.PlacesServiceStatus.OK &&
+            predictions
+          ) {
+            const results: AddressSuggestion[] = predictions.map((p) => ({
+              placeId: p.place_id,
+              description: p.description,
+              mainText: p.structured_formatting.main_text,
+              secondaryText: p.structured_formatting.secondary_text || '',
+            }));
+            setSuggestions(results);
+          } else {
+            setSuggestions([]);
+          }
+        }
+      );
+    }, 300);
   }, []);
 
   const clear = useCallback(() => {
@@ -90,5 +122,5 @@ export function useAddressSearch() {
     }
   }, []);
 
-  return { suggestions, isSearching, search, clear };
+  return { suggestions, isSearching, isReady, search, clear };
 }

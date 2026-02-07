@@ -5,7 +5,6 @@ import { useDataStore } from '@/stores/dataStore';
 import { useAppStore } from '@/stores/appStore';
 import { liffService } from '@/services/liff';
 import { useAddressSearch } from '@/hooks/useAddressSearch';
-import type { AddressSuggestion } from '@/hooks/useAddressSearch';
 
 type OnboardingStep = 'select-community' | 'create-community' | 'personal-info' | 'confirm';
 
@@ -93,17 +92,12 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
   };
 
   // 選擇推薦地址
-  const selectSuggestion = (suggestion: AddressSuggestion) => {
-    // 從 displayName 提取台灣地址部分（去掉國家名稱）
-    let addr = suggestion.displayName
-      .replace(/, 台灣$/i, '')
-      .replace(/, Taiwan$/i, '')
+  const selectSuggestion = (suggestion: { description: string }) => {
+    // 去掉尾端的國家名稱
+    const addr = suggestion.description
+      .replace(/台灣$/i, '')
+      .replace(/Taiwan$/i, '')
       .trim();
-
-    // 如果解析出的 city + district + road 更好，用它
-    if (suggestion.city && suggestion.road) {
-      addr = `${suggestion.city}${suggestion.district}${suggestion.road}`;
-    }
 
     setAddressInput(addr);
     setSelectedAddress(addr);
@@ -402,27 +396,19 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
 
           {/* 推薦下拉選單 */}
           {showSuggestions && suggestions.length > 0 && (
-            <div className="absolute z-10 w-full mt-1 bg-white rounded-xl border border-[#E8E8ED] shadow-lg max-h-[200px] overflow-y-auto">
-              {suggestions.map((s, i) => {
-                // 顯示簡潔的地址
-                let display = s.displayName
-                  .replace(/, 台灣$/i, '')
-                  .replace(/, Taiwan$/i, '')
-                  .trim();
-                // 截取前面的部分
-                const parts = display.split(', ');
-                display = parts.slice(0, 3).reverse().join('');
-
-                return (
-                  <button
-                    key={`${s.lat}-${s.lon}-${i}`}
-                    onClick={() => selectSuggestion(s)}
-                    className="w-full text-left px-4 py-3 hover:bg-[#F0FFF4] border-b border-[#F5F5F7] last:border-b-0 transition-colors"
-                  >
-                    <div className="text-[14px] text-[#1D1D1F]">{display}</div>
-                  </button>
-                );
-              })}
+            <div className="absolute z-10 w-full mt-1 bg-white rounded-xl border border-[#E8E8ED] shadow-lg max-h-[240px] overflow-y-auto">
+              {suggestions.map((s, i) => (
+                <button
+                  key={s.placeId || i}
+                  onClick={() => selectSuggestion(s)}
+                  className="w-full text-left px-4 py-3 hover:bg-[#F0FFF4] border-b border-[#F5F5F7] last:border-b-0 transition-colors"
+                >
+                  <div className="text-[14px] text-[#1D1D1F] font-medium">{s.mainText}</div>
+                  {s.secondaryText && (
+                    <div className="text-[12px] text-[#86868B] mt-0.5">{s.secondaryText}</div>
+                  )}
+                </button>
+              ))}
             </div>
           )}
         </div>
