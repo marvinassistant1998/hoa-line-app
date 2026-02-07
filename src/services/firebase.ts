@@ -8,6 +8,8 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  query,
+  where,
   serverTimestamp,
 } from 'firebase/firestore';
 import type {
@@ -95,6 +97,14 @@ export const residentsService = {
     return snapshot.docs
       .map((d) => docToData<Resident>(d))
       .sort((a, b) => a.unit.localeCompare(b.unit));
+  },
+
+  async getByLineUserId(lineUserId: string): Promise<Resident | null> {
+    const ref = collection(db, COLLECTIONS.RESIDENTS);
+    const q = query(ref, where('lineUserId', '==', lineUserId));
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) return null;
+    return docToData<Resident>(snapshot.docs[0]);
   },
 
   async getById(id: string): Promise<Resident | null> {

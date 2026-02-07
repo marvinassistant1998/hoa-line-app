@@ -87,13 +87,10 @@ export const useAppStore = create<AppState>((set) => ({
     }
   },
 
-  // 偵測用戶角色
+  // 偵測用戶角色（只查詢當前用戶，不拉全部住戶資料）
   detectUserRole: async (lineUserId: string) => {
     try {
-      const residents = await residentsService.getAll();
-      const matched = residents.find(
-        (r) => r.lineUserId === lineUserId || r.lineId === lineUserId
-      );
+      const matched = await residentsService.getByLineUserId(lineUserId);
 
       if (matched) {
         set({
@@ -104,7 +101,6 @@ export const useAppStore = create<AppState>((set) => ({
           registrationStatus: 'registered',
         });
       } else {
-        // 找不到匹配的住戶，預設為住戶角色（未註冊狀態）
         set({
           userRole: '住戶',
           currentResidentId: null,
@@ -114,7 +110,6 @@ export const useAppStore = create<AppState>((set) => ({
       }
     } catch (error) {
       console.error('角色偵測失敗:', error);
-      // 偵測失敗時預設為住戶，不阻擋使用
       set({
         userRole: '住戶',
         registrationStatus: 'unregistered',
