@@ -264,6 +264,18 @@ export const meetingsService = {
   },
 };
 
+// ==================== 測試用：清除資料 ====================
+export const clearAllData = async () => {
+  const colNames = [COLLECTIONS.COMMUNITIES, COLLECTIONS.RESIDENTS];
+  for (const name of colNames) {
+    const ref = collection(db, name);
+    const snapshot = await getDocs(ref);
+    for (const d of snapshot.docs) {
+      await deleteDoc(doc(db, name, d.id));
+    }
+  }
+};
+
 // ==================== 匯出 ====================
 export { db, app };
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { Community } from '@/types';
-import { communitiesService } from '@/services/firebase';
+import { communitiesService, clearAllData } from '@/services/firebase';
 import { useDataStore } from '@/stores/dataStore';
 import { useAppStore } from '@/stores/appStore';
 import { liffService } from '@/services/liff';
@@ -762,6 +762,23 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
     );
   };
 
+  const isTestMode = new URLSearchParams(window.location.search).get('test-onboarding') === 'true';
+  const [clearing, setClearing] = useState(false);
+
+  const handleClearData = async () => {
+    setClearing(true);
+    try {
+      await clearAllData();
+      setCommunities([]);
+      alert('資料庫已清空，請重新操作');
+      window.location.reload();
+    } catch (err) {
+      alert('清除失敗：' + (err as Error).message);
+    } finally {
+      setClearing(false);
+    }
+  };
+
   return (
     <div className="max-w-md mx-auto bg-[#F5F5F7] min-h-screen p-5 pt-8">
       {!submitSuccess && renderProgress()}
@@ -770,6 +787,19 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
       {step === 'create-community' && renderCreateCommunity()}
       {step === 'personal-info' && renderPersonalInfo()}
       {step === 'confirm' && renderConfirm()}
+
+      {/* 測試模式：清除資料按鈕 */}
+      {isTestMode && (
+        <div className="mt-8 pt-4 border-t border-dashed border-red-300">
+          <button
+            onClick={handleClearData}
+            disabled={clearing}
+            className="w-full py-2 bg-red-50 text-red-500 rounded-xl text-sm border border-red-200"
+          >
+            {clearing ? '清除中...' : '🗑️ 清除所有測試資料（communities + residents）'}
+          </button>
+        </div>
+      )}
     </div>
   );
 };

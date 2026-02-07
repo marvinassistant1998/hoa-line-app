@@ -12,6 +12,7 @@ import {
 } from '@/screens';
 import { useAppStore } from '@/stores/appStore';
 import { useToastStore } from '@/hooks/useToast';
+import { clearAllData } from '@/services/firebase';
 import { getVisibleTabs } from '@/lib/permissions';
 import type { ResidentRoleLabel } from '@/types';
 
@@ -35,6 +36,19 @@ const App: React.FC = () => {
   } = useAppStore();
 
   const { message: toastMessage, visible: toastVisible } = useToastStore();
+
+  // 清除測試資料（?clear-data=true）
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('clear-data') === 'true') {
+      clearAllData().then(() => {
+        // 清完後移除參數，重新載入
+        params.delete('clear-data');
+        const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+        window.location.replace(newUrl);
+      });
+    }
+  }, []);
 
   // 初始化 LIFF
   useEffect(() => {
