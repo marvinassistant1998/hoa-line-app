@@ -22,7 +22,7 @@ import {
   InputField,
   SelectField,
 } from '@/components/ui';
-import { mockVendors } from '@/data/mockData';
+import { useDataStore } from '@/stores/dataStore';
 import { usePermission } from '@/hooks/usePermission';
 import { showToast } from '@/hooks/useToast';
 import type { Vendor, Invoice, ServiceRecord } from '@/types';
@@ -33,14 +33,19 @@ interface VendorsScreenProps {
 }
 
 export const VendorsScreen: React.FC<VendorsScreenProps> = ({ setSelectedVendor }) => {
+  const { vendors, fetchVendors } = useDataStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const canEdit = usePermission('edit_vendors');
 
+  React.useEffect(() => {
+    fetchVendors();
+  }, [fetchVendors]);
+
   const categories = ['all', '電梯維護', '清潔服務', '水電維修', '保全', '其他'];
 
-  const filteredVendors = mockVendors.filter((vendor) => {
+  const filteredVendors = vendors.filter((vendor) => {
     const matchesSearch =
       vendor.name.includes(searchQuery) ||
       vendor.category.includes(searchQuery) ||
