@@ -63,6 +63,21 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
   const { addResident, fetchResidents } = useDataStore();
   const { detectUserRole } = useAppStore();
 
+  // 自動帶入 LINE 用戶名稱
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const profile = await liffService.getProfile();
+        if (profile?.displayName && !data.name) {
+          setData((prev) => ({ ...prev, name: profile.displayName }));
+        }
+      } catch {
+        // 非 LINE 環境，不帶入
+      }
+    };
+    loadProfile();
+  }, []);
+
   // 載入所有社區
   useEffect(() => {
     loadCommunities();
