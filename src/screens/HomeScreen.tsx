@@ -27,7 +27,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   setSelectedResident,
 }) => {
   const { residents, repairs, vendors, meetings, initializeData } = useDataStore();
-  const { userRole, currentResident } = useAppStore();
+  const { userRole, currentResident, currentCommunityId } = useAppStore();
+  const communities = useDataStore((s) => s.communities);
   const canViewDashboard = usePermission('view_dashboard');
   const canSendReminders = usePermission('send_reminders');
 
@@ -35,6 +36,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   useEffect(() => {
     initializeData();
   }, [initializeData]);
+
+  // 社區名稱
+  const communityName = communities.find((c) => c.id === currentCommunityId)?.name || '我的社區';
 
   // 計算統計數據
   const unpaidResidents = residents.filter((r) => {
@@ -60,7 +64,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               {currentResident?.name || '住戶'}
             </h1>
             <p className="text-white/70 text-sm mt-1">
-              {currentResident?.unit || ''} · 幸福社區
+              {currentResident?.unit || ''} · {communityName}
             </p>
           </div>
         </div>
@@ -122,7 +126,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         <div className="h-12" /> {/* Status bar */}
         <div className="px-5 py-6">
           <p className="text-white/80 text-sm">早安 👋</p>
-          <h1 className="text-2xl font-bold mt-1">幸福社區管委會</h1>
+          <h1 className="text-2xl font-bold mt-1">{communityName}</h1>
           {userRole && (
             <p className="text-white/70 text-sm mt-1">身份：{userRole}</p>
           )}

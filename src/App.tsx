@@ -39,6 +39,7 @@ const App: React.FC = () => {
 
   const [clearingData, setClearingData] = useState(false);
   const [clearDone, setClearDone] = useState(false);
+  const [onboardingDone, setOnboardingDone] = useState(false);
 
   // 清除測試資料（?clear-data=true）
   useEffect(() => {
@@ -84,8 +85,7 @@ const App: React.FC = () => {
 
   // Onboarding 完成後的回調
   const handleOnboardingComplete = () => {
-    // OnboardingScreen 內部已經呼叫 detectUserRole 更新了角色
-    // 這裡只需要確保畫面切換到首頁
+    setOnboardingDone(true);
     setCurrentScreen('home');
   };
 
@@ -124,7 +124,7 @@ const App: React.FC = () => {
   // 真實環境：LIFF 登入但 Firestore 沒有此用戶
   // 測試模式：網址帶 ?test-onboarding=true
   const testOnboarding = new URLSearchParams(window.location.search).get('test-onboarding') === 'true';
-  const showOnboarding = testOnboarding || (registrationStatus === 'unregistered' && userProfile && !error);
+  const showOnboarding = !onboardingDone && (testOnboarding || (registrationStatus === 'unregistered' && userProfile && !error));
 
   if (showOnboarding) {
     return (
