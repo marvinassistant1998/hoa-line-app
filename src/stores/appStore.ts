@@ -100,8 +100,9 @@ export const useAppStore = create<AppState>((set) => ({
           registrationStatus: 'registered',
         });
       } else {
+        // 找不到匹配的住戶，預設為住戶角色（未註冊狀態）
         set({
-          userRole: null,
+          userRole: '住戶',
           currentResidentId: null,
           currentResident: null,
           registrationStatus: 'unregistered',
