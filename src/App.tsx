@@ -85,8 +85,11 @@ const App: React.FC = () => {
     console.warn('LIFF 初始化失敗，使用 Demo 模式:', error);
   }
 
-  // 未註冊用戶 → 顯示 Onboarding（僅在有 LIFF Profile 時才顯示）
-  const showOnboarding = registrationStatus === 'unregistered' && userProfile && !error;
+  // 未註冊用戶 → 顯示 Onboarding
+  // 真實環境：LIFF 登入但 Firestore 沒有此用戶
+  // 測試模式：網址帶 ?test-onboarding=true
+  const testOnboarding = new URLSearchParams(window.location.search).get('test-onboarding') === 'true';
+  const showOnboarding = testOnboarding || (registrationStatus === 'unregistered' && userProfile && !error);
 
   if (showOnboarding) {
     return (
