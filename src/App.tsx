@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { TabBar } from '@/components/ui';
 import {
   HomeScreen,
@@ -37,15 +37,22 @@ const App: React.FC = () => {
 
   const { message: toastMessage, visible: toastVisible } = useToastStore();
 
+  const [clearingData, setClearingData] = useState(false);
+  const [clearDone, setClearDone] = useState(false);
+
   // 清除測試資料（?clear-data=true）
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('clear-data') === 'true') {
+      setClearingData(true);
       clearAllData().then(() => {
-        // 清完後移除參數，重新載入
-        params.delete('clear-data');
-        const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
-        window.location.replace(newUrl);
+        setClearDone(true);
+        setTimeout(() => {
+          window.location.replace(window.location.pathname + '?test-onboarding=true');
+        }, 1500);
+      }).catch(() => {
+        setClearingData(false);
+        alert('清除失敗');
       });
     }
   }, []);
@@ -81,6 +88,20 @@ const App: React.FC = () => {
     // 這裡只需要確保畫面切換到首頁
     setCurrentScreen('home');
   };
+
+  // 清除資料畫面
+  if (clearingData) {
+    return (
+      <div className="max-w-md mx-auto bg-[#F5F5F7] min-h-screen flex items-center justify-center font-[-apple-system,BlinkMacSystemFont,sans-serif]">
+        <div className="text-center">
+          <div className="text-4xl mb-4">{clearDone ? '✅' : '🗑️'}</div>
+          <p className="text-[#1D1D1F] font-medium">
+            {clearDone ? '資料已清除！即將重新載入...' : '正在清除測試資料...'}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // 載入中畫面
   if (isLoading) {
