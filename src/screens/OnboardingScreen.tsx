@@ -43,6 +43,8 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
   const [searchKeyword, setSearchKeyword] = useState('');
   const [communities, setCommunities] = useState<Community[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationError, setLocationError] = useState('');
 
   // 建立新社區：結構化地址
   const [addressForm, setAddressForm] = useState<AddressForm>({
@@ -78,6 +80,21 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
     loadProfile();
   }, []);
 
+  // 取得用戶 GPS 位置
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        },
+        () => {
+          setLocationError('無法取得位置');
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+  }, []);
+
   // 載入所有社區
   useEffect(() => {
     loadCommunities();
@@ -95,6 +112,43 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
     }
   };
 
+  // 用 Google Maps Geocoding 取得地址座標
+  const geocodeAddress = async (address: string): Promise<{ lat: number; lng: number } | null> => {
+    try {
+      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+      if (!apiKey) return null;
+      const res = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&region=tw&language=zh-TW&key=${apiKey}`
+      );
+      const data = await res.json();
+      if (data.status === 'OK' && data.results?.length > 0) {
+        const loc = data.results[0].geometry.location;
+        return { lat: loc.lat, lng: loc.lng };
+      }
+    } catch (err) {
+      console.error('Geocoding 失敗:', err);
+    }
+    return null;
+  };
+
+  // 計算兩點距離（公里）
+  const getDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    const R = 6371;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLng = ((lng2 - lng1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  };
+
+  // 格式化距離
+  const formatDistance = (km: number): string => {
+    if (km < 1) return `${Math.round(km * 1000)}m`;
+    return `${km.toFixed(1)}km`;
+  };
+
   // 可用的區域
   const availableDistricts: District[] = addressForm.city
     ? getDistrictsByCity(addressForm.city)
@@ -106,12 +160,32 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
     return parts.join('');
   };
 
-  // 過濾社區
-  const filteredCommunities = communities.filter(
-    (c) =>
-      c.name.includes(searchKeyword) ||
-      c.address.includes(searchKeyword)
-  );
+  // 過濾 + 按距離排序社區
+  const nearbyCommunities = (() => {
+    let list = communities;
+
+    // 搜尋關鍵字過濾
+    if (searchKeyword) {
+      list = list.filter(
+        (c) => c.name.includes(searchKeyword) || c.address.includes(searchKeyword)
+      );
+    }
+
+    // 有 GPS 時：只顯示有座標且在 10km 內的社區，按距離排序
+    if (userLocation && !searchKeyword) {
+      const withDist = list
+        .filter((c) => c.latitude && c.longitude)
+        .map((c) => ({
+          community: c,
+          distance: getDistance(userLocation.lat, userLocation.lng, c.latitude!, c.longitude!),
+        }))
+        .filter((item) => item.distance <= 10)
+        .sort((a, b) => a.distance - b.distance);
+      return withDist;
+    }
+
+    return list.map((c) => ({ community: c, distance: -1 }));
+  })();
 
   // 選擇社區
   const selectCommunity = (community: Community) => {
@@ -150,6 +224,9 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
         ? fullAddress
         : communityName.trim();
 
+      // Geocode 地址取得座標
+      const coords = await geocodeAddress(fullAddress);
+
       const communityData = {
         name: finalName,
         address: fullAddress,
@@ -157,6 +234,8 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
         monthlyFee: 2000,
         floors: newFloors ? parseInt(newFloors) : undefined,
         unitsPerFloor: newUnitsPerFloor ? parseInt(newUnitsPerFloor) : undefined,
+        latitude: coords?.lat,
+        longitude: coords?.lng,
         createdBy: profile?.userId || '',
         createdAt: new Date(),
       };
@@ -324,21 +403,34 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
         )}
       </div>
 
+      {/* 附近社區提示 */}
+      {!searchKeyword && userLocation && (
+        <p className="text-xs text-[#86868B]">📍 依據您的位置顯示 10 公里內的社區</p>
+      )}
+      {!searchKeyword && locationError && (
+        <p className="text-xs text-[#86868B]">📍 無法取得位置，顯示所有社區</p>
+      )}
+
       {/* 社區列表 */}
       {isSearching ? (
         <div className="text-center py-8">
           <div className="w-8 h-8 border-3 border-[#06C755] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
           <p className="text-[#86868B] text-sm">載入中...</p>
         </div>
-      ) : filteredCommunities.length > 0 ? (
+      ) : nearbyCommunities.length > 0 ? (
         <div className="space-y-2 max-h-[300px] overflow-y-auto">
-          {filteredCommunities.map((c) => (
+          {nearbyCommunities.map(({ community: c, distance }) => (
             <button
               key={c.id}
               onClick={() => selectCommunity(c)}
               className="w-full text-left bg-white rounded-xl p-4 border border-[#E8E8ED] hover:border-[#06C755] transition-colors"
             >
-              <div className="font-medium text-[#1D1D1F]">{c.name}</div>
+              <div className="flex items-center justify-between">
+                <div className="font-medium text-[#1D1D1F]">{c.name}</div>
+                {distance >= 0 && (
+                  <span className="text-xs text-[#06C755] font-medium">{formatDistance(distance)}</span>
+                )}
+              </div>
               <div className="text-sm text-[#86868B] mt-1">{c.address}</div>
               {c.totalUnits > 0 && (
                 <div className="text-xs text-[#86868B] mt-1">{c.totalUnits} 戶</div>
@@ -349,7 +441,7 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
       ) : (
         <div className="text-center py-8">
           <p className="text-[#86868B]">
-            {searchKeyword ? '找不到符合的社區' : '目前沒有已建立的社區'}
+            {searchKeyword ? '找不到符合的社區' : '附近沒有已建立的社區'}
           </p>
         </div>
       )}

@@ -7,6 +7,8 @@ export interface Community {
   monthlyFee: number;
   floors?: number;
   unitsPerFloor?: number;
+  latitude?: number;
+  longitude?: number;
   createdBy?: string;
   createdAt: Date;
 }
