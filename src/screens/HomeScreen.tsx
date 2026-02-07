@@ -66,12 +66,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
         <div className="px-5 -mt-4 space-y-4">
           {/* 社區公告 */}
-          <Card className="shadow-lg">
+          <Card className="shadow-lg cursor-pointer" onClick={() => setCurrentScreen('announcements')}>
             <h2 className="font-semibold text-[#1D1D1F] mb-3">社區公告</h2>
             <AlertItem
               icon={<CalendarIcon className="w-4 h-4" color="#06C755" />}
               text="下次管委會：5/15（三）19:30"
               variant="primary"
+              onClick={() => setCurrentScreen('announcements')}
             />
           </Card>
 

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { TabBar } from '@/components/ui';
 import {
   HomeScreen,
+  AnnouncementsScreen,
   ResidentsScreen,
   ResidentDetailScreen,
   VendorsScreen,
@@ -76,6 +77,20 @@ const App: React.FC = () => {
             return;
           }
           throw new Error('無法獲取您的 LINE 資料');
+        }
+
+        // 先檢查是否已經註冊過
+        await fetchResidents();
+        const allResidents = useDataStore.getState().residents;
+        const alreadyRegistered = allResidents.some(
+          (r) => r.lineUserId === profile.userId || r.lineId === profile.userId
+        );
+
+        if (alreadyRegistered) {
+          // 已經是住戶，不需要重新註冊
+          await detectUserRole(profile.userId);
+          setRegisterStatus('idle');
+          return;
         }
 
         await addResident({
@@ -160,6 +175,8 @@ const App: React.FC = () => {
 
     // 主要畫面
     switch (currentScreen) {
+      case 'announcements':
+        return <AnnouncementsScreen onBack={() => setCurrentScreen('home')} />;
       case 'residents':
         return (
           <ResidentsScreen
