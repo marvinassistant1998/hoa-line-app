@@ -2,6 +2,7 @@ import React, { ReactNode } from 'react';
 import {
   HomeIcon,
   UsersIcon,
+  BookIcon,
   BuildingIcon,
   SettingsIcon,
   ChevronLeftIcon,
@@ -19,6 +20,7 @@ interface TabBarProps {
 
 const ALL_TABS = [
   { id: 'home', label: '首頁', Icon: HomeIcon },
+  { id: 'directory', label: '通訊錄', Icon: BookIcon },
   { id: 'residents', label: '住戶', Icon: UsersIcon },
   { id: 'vendors', label: '廠商', Icon: BuildingIcon },
   { id: 'settings', label: '設定', Icon: SettingsIcon },
@@ -38,7 +40,9 @@ export const TabBar: React.FC<TabBarProps> = ({ currentScreen, setCurrentScreen,
             <button
               key={item.id}
               onClick={() => setCurrentScreen(item.id)}
-              className={`flex flex-col items-center gap-1 min-w-[64px] ${
+              aria-label={item.label}
+              aria-current={isActive ? 'page' : undefined}
+              className={`flex flex-col items-center justify-center gap-1 min-w-[64px] min-h-[44px] ${
                 isActive ? 'text-[#06C755]' : 'text-[#86868B]'
               }`}
             >
@@ -47,7 +51,7 @@ export const TabBar: React.FC<TabBarProps> = ({ currentScreen, setCurrentScreen,
                 color={isActive ? '#06C755' : '#86868B'}
                 filled={isActive}
               />
-              <span className="text-[10px] font-medium">{item.label}</span>
+              <span className="text-[11px] font-medium">{item.label}</span>
             </button>
           );
         })}
@@ -77,7 +81,7 @@ export const Header: React.FC<HeaderProps> = ({
     <div className="px-5 py-4 flex items-center justify-between">
       <div className="w-20">
         {showBack && (
-          <button onClick={onBack} className="flex items-center text-[#06C755]">
+          <button onClick={onBack} aria-label="返回" className="flex items-center text-[#06C755] min-h-[44px]">
             <ChevronLeftIcon className="w-5 h-5" color="#06C755" />
             <span>返回</span>
           </button>
@@ -219,6 +223,7 @@ interface FloatingButtonProps {
 export const FloatingButton: React.FC<FloatingButtonProps> = ({ onClick, icon }) => (
   <button
     onClick={onClick}
+    aria-label="新增"
     className="fixed right-5 bottom-28 w-14 h-14 bg-[#06C755] rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-transform z-30"
   >
     {icon || <PlusIcon className="w-6 h-6" color="white" />}
@@ -236,13 +241,15 @@ interface ModalProps {
 export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
   if (!isOpen) return null;
 
+  const titleId = `modal-title-${title.replace(/\s/g, '-')}`;
+
   return (
-    <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden="true" />
       <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl max-h-[90vh] overflow-hidden">
         <div className="sticky top-0 bg-white border-b border-[#E8E8ED] px-5 py-4 flex items-center justify-between">
-          <button onClick={onClose} className="text-[#06C755]">取消</button>
-          <h2 className="font-semibold text-[#1D1D1F]">{title}</h2>
+          <button onClick={onClose} aria-label="取消" className="text-[#06C755]">取消</button>
+          <h2 id={titleId} className="font-semibold text-[#1D1D1F]">{title}</h2>
           <div className="w-12" />
         </div>
         <div className="overflow-y-auto max-h-[calc(90vh-60px)]">
@@ -271,11 +278,13 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 }) => {
   if (!isOpen) return null;
 
+  const titleId = `confirm-dialog-title-${title.replace(/\s/g, '-')}`;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden="true" />
       <div className="relative bg-white rounded-2xl p-6 w-full max-w-sm">
-        <h3 className="text-lg font-semibold text-[#1D1D1F] mb-2">{title}</h3>
+        <h3 id={titleId} className="text-lg font-semibold text-[#1D1D1F] mb-2">{title}</h3>
         <p className="text-[#86868B] mb-6">{message}</p>
         <div className="flex gap-3">
           <button

@@ -11,6 +11,8 @@ import type { Admin, PlanType, Usage } from '@/types';
 
 export const SettingsScreen: React.FC = () => {
   const canAccess = usePermission('access_settings');
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const [showAdminModal, setShowAdminModal] = useState(false);
 
   if (!canAccess) {
     return (
@@ -27,8 +29,6 @@ export const SettingsScreen: React.FC = () => {
       </div>
     );
   }
-  const [showPlanModal, setShowPlanModal] = useState(false);
-  const [showAdminModal, setShowAdminModal] = useState(false);
 
   // 模擬資料
   const currentPlan: PlanType = 'free';

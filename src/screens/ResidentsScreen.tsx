@@ -32,6 +32,13 @@ export const ResidentsScreen: React.FC<ResidentsScreenProps> = ({
   const canViewResidents = usePermission('view_residents');
   const canEdit = usePermission('edit_residents');
   const canSendReminders = usePermission('send_reminders');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filter, setFilter] = useState<'all' | 'unpaid' | 'committee'>('all');
+  const [showAddModal, setShowAddModal] = useState(false);
+
+  useEffect(() => {
+    fetchResidents();
+  }, [fetchResidents]);
 
   // 權限守衛：住戶角色不能看到住戶列表
   if (!canViewResidents) {
@@ -45,13 +52,6 @@ export const ResidentsScreen: React.FC<ResidentsScreenProps> = ({
       </div>
     );
   }
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState<'all' | 'unpaid' | 'committee'>('all');
-  const [showAddModal, setShowAddModal] = useState(false);
-
-  useEffect(() => {
-    fetchResidents();
-  }, [fetchResidents]);
 
   // 篩選住戶
   const filteredResidents = residents.filter((resident) => {
@@ -694,7 +694,7 @@ const AddResidentModal: React.FC<AddResidentModalProps> = ({ isOpen, onClose, on
           disabled={!formData.unit || !formData.name || isSubmitting}
           className={`w-full py-4 rounded-xl font-semibold ${
             formData.unit && formData.name && !isSubmitting
-              ? 'bg-[#1D1D1F] text-white'
+              ? 'bg-[#06C755] text-white'
               : 'bg-[#E8E8ED] text-[#86868B]'
           }`}
         >

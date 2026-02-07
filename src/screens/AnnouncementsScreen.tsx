@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   CalendarIcon,
+  ChevronLeftIcon,
   ChevronRightIcon,
   AlertCircleIcon,
   WrenchIcon,
@@ -24,8 +25,9 @@ export const AnnouncementsScreen: React.FC<AnnouncementsScreenProps> = ({ onBack
       <div className="bg-gradient-to-b from-[#06C755] to-[#05A847] text-white">
         <div className="h-12" />
         <div className="px-5 py-6">
-          <button onClick={onBack} className="text-white/80 text-sm mb-2 flex items-center gap-1">
-            ← 返回
+          <button onClick={onBack} aria-label="返回" className="text-white/80 text-sm mb-2 flex items-center gap-1 min-h-[44px]">
+            <ChevronLeftIcon className="w-4 h-4" color="rgba(255,255,255,0.8)" />
+            返回
           </button>
           <h1 className="text-2xl font-bold">社區公告</h1>
           <p className="text-white/70 text-sm mt-1">幸福社區最新消息</p>
@@ -143,8 +145,8 @@ const AnnouncementItem: React.FC<AnnouncementItemProps> = ({ title, content, dat
 
 // 提醒項目
 const ReminderItem: React.FC<{ text: string }> = ({ text }) => (
-  <div className="flex items-center gap-2 p-2">
-    <ChevronRightIcon className="w-3 h-3" color="#06C755" />
+  <div className="flex items-center gap-2 p-3 min-h-[44px]">
+    <ChevronRightIcon className="w-3 h-3 flex-shrink-0" color="#06C755" />
     <span className="text-sm text-[#1D1D1F]">{text}</span>
   </div>
 );

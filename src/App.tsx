@@ -6,6 +6,7 @@ import {
   OnboardingScreen,
   ResidentsScreen,
   ResidentDetailScreen,
+  DirectoryScreen,
   VendorsScreen,
   VendorDetailScreen,
   SettingsScreen,
@@ -170,6 +171,8 @@ const App: React.FC = () => {
             setSelectedResident={setSelectedResident}
           />
         );
+      case 'directory':
+        return <DirectoryScreen setCurrentScreen={setCurrentScreen} />;
       case 'vendors':
         return <VendorsScreen setSelectedVendor={setSelectedVendor} />;
       case 'settings':

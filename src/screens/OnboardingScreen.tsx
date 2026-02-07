@@ -391,7 +391,8 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
         {searchKeyword && (
           <button
             onClick={() => setSearchKeyword('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#86868B]"
+            aria-label="清除搜尋"
+            className="absolute right-1 top-1/2 -translate-y-1/2 text-[#86868B] min-w-[44px] min-h-[44px] flex items-center justify-center"
           >
             ✕
           </button>
@@ -413,12 +414,12 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
           <p className="text-[#86868B] text-sm">載入中...</p>
         </div>
       ) : nearbyCommunities.length > 0 ? (
-        <div className="space-y-2 max-h-[300px] overflow-y-auto">
+        <div className="space-y-2 max-h-[40vh] overflow-y-auto">
           {nearbyCommunities.map(({ community: c, distance }) => (
             <button
               key={c.id}
               onClick={() => selectCommunity(c)}
-              className="w-full text-left bg-white rounded-xl p-4 border border-[#E8E8ED] hover:border-[#06C755] transition-colors"
+              className="w-full text-left bg-white rounded-xl p-4 border border-[#E8E8ED] hover:border-[#06C755] active:bg-[#F5F5F7] transition-colors"
             >
               <div className="flex items-center justify-between">
                 <div className="font-medium text-[#1D1D1F]">{c.name}</div>
@@ -444,7 +445,7 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
       {/* 建立新社區按鈕 */}
       <button
         onClick={() => setStep('create-community')}
-        className="w-full py-3 bg-white border-2 border-dashed border-[#06C755] text-[#06C755] rounded-xl font-medium text-[15px]"
+        className="w-full py-3 bg-white border-2 border-dashed border-[#06C755] text-[#06C755] rounded-xl font-medium text-[15px] active:bg-[#06C755]/5"
       >
         ＋ 建立新社區
       </button>
@@ -508,7 +509,11 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
         {/* 社區名稱 */}
         <div className="border-t border-[#E8E8ED] pt-3">
           <div
+            role="checkbox"
+            aria-checked={useAddressAsName}
+            tabIndex={0}
             onClick={() => setUseAddressAsName(!useAddressAsName)}
+            onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setUseAddressAsName(!useAddressAsName); } }}
             className="flex items-center gap-3 cursor-pointer mb-2"
           >
             <div
@@ -641,7 +646,11 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
 
           {/* 主委勾選 */}
           <div
+            role="checkbox"
+            aria-checked={data.isChairman}
+            tabIndex={0}
             onClick={() => setData({ ...data, isChairman: !data.isChairman })}
+            onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setData({ ...data, isChairman: !data.isChairman }); } }}
             className="flex items-center gap-3 bg-white rounded-xl p-4 border border-[#E8E8ED] cursor-pointer"
           >
             <div

@@ -55,6 +55,7 @@ export function hasPermission(role: ResidentRoleLabel | null, permission: Permis
 export function getVisibleTabs(role: ResidentRoleLabel | null): string[] {
   if (!role) return ['home'];
   const tabs: string[] = ['home'];
+  tabs.push('directory'); // 所有角色都能看通訊錄
   if (hasPermission(role, 'view_residents')) tabs.push('residents');
   tabs.push('vendors'); // 所有角色都能看廠商
   if (hasPermission(role, 'access_settings')) tabs.push('settings');

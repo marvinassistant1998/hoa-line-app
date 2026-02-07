@@ -308,6 +308,30 @@ export const ImageIcon: React.FC<IconProps> = ({
   </svg>
 );
 
+// 通訊錄圖示
+export const BookIcon: React.FC<IconProps> = ({
+  className = "w-6 h-6",
+  color = "currentColor",
+  filled = false
+}) => (
+  <svg className={className} viewBox="0 0 24 24" fill={filled ? color : "none"}>
+    <path
+      d="M4 19.5A2.5 2.5 0 016.5 17H20"
+      stroke={color}
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"
+      stroke={filled ? "none" : color}
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 // LINE 圖示
 export const LineIcon: React.FC<IconProps> = ({
   className = "w-6 h-6",
@@ -347,6 +371,7 @@ export const Icons = {
   download: DownloadIcon,
   file: FileIcon,
   image: ImageIcon,
+  book: BookIcon,
   line: LineIcon,
 };
 
