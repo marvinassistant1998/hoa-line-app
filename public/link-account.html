@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>綁定主委 LINE 帳號</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: -apple-system, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+    button { background: #06C755; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 16px; cursor: pointer; width: 100%; margin: 8px 0; }
+    button:disabled { background: #ccc; }
+    .card { background: #f5f5f7; border-radius: 12px; padding: 16px; margin: 12px 0; }
+    .label { color: #86868b; font-size: 13px; }
+    .value { color: #1d1d1f; font-weight: bold; font-size: 15px; margin-top: 4px; }
+    #log { background: #1D1D1F; color: #34C759; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 13px; white-space: pre-wrap; max-height: 300px; overflow-y: auto; margin-top: 16px; }
+    select { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #e8e8ed; font-size: 15px; margin: 8px 0; }
+  </style>
+</head>
+<body>
+  <h1>🔗 綁定 LINE 帳號到住戶</h1>
+  <p>這個工具會將你的 LINE userId 寫入 Firestore 住戶資料中</p>
+
+  <div class="card">
+    <div class="label">你的 LINE userId</div>
+    <div class="value" id="userId">讀取中...</div>
+  </div>
+
+  <div class="card">
+    <div class="label">你的 LINE 名稱</div>
+    <div class="value" id="displayName">讀取中...</div>
+  </div>
+
+  <div class="card">
+    <div class="label">選擇要綁定的住戶</div>
+    <select id="residentSelect">
+      <option value="">載入中...</option>
+    </select>
+  </div>
+
+  <button id="linkBtn" disabled>綁定帳號</button>
+
+  <div id="log" style="display:none;"></div>
+
+  <!-- LIFF SDK -->
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <!-- Firebase compat SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    var LIFF_ID = '2009004300-wqzTZcHc';
+    var firebaseConfig = {
+      apiKey: "AIzaSyBWm5rKT3535klcNVtWCK6oosdr2BO-ZrQ",
+      authDomain: "hoa-line-app-3e2f1.firebaseapp.com",
+      projectId: "hoa-line-app-3e2f1",
+      storageBucket: "hoa-line-app-3e2f1.firebasestorage.app",
+      messagingSenderId: "225045051582",
+      appId: "1:225045051582:web:9235d2cddff542456786ef",
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    var db = firebase.firestore();
+    var userProfile = null;
+    var allResidents = [];
+
+    function log(msg) {
+      var el = document.getElementById('log');
+      el.style.display = 'block';
+      el.textContent += msg + '\n';
+    }
+
+    async function init() {
+      try {
+        // 初始化 LIFF
+        await liff.init({ liffId: LIFF_ID });
+
+        if (!liff.isLoggedIn()) {
+          liff.login();
+          return;
+        }
+
+        userProfile = await liff.getProfile();
+        document.getElementById('userId').textContent = userProfile.userId;
+        document.getElementById('displayName').textContent = userProfile.displayName;
+
+        // 讀取 Firestore 住戶列表
+        var snapshot = await db.collection('residents').get();
+        var select = document.getElementById('residentSelect');
+        select.innerHTML = '<option value="">-- 請選擇住戶 --</option>';
+
+        snapshot.forEach(function(doc) {
+          var data = doc.data();
+          allResidents.push({ id: doc.id, ...data });
+          var opt = document.createElement('option');
+          opt.value = doc.id;
+          var linked = data.lineUserId ? ' ✅ 已綁定' : '';
+          opt.textContent = data.name + ' (' + data.unit + ') - ' + data.role + linked;
+          select.appendChild(opt);
+        });
+
+        document.getElementById('linkBtn').disabled = false;
+      } catch (err) {
+        document.getElementById('userId').textContent = '無法讀取（請從 LINE 開啟此頁面）';
+        document.getElementById('displayName').textContent = err.message;
+        log('錯誤: ' + err.message);
+
+        // 即使 LIFF 失敗，也載入住戶列表
+        try {
+          var snapshot = await db.collection('residents').get();
+          var select = document.getElementById('residentSelect');
+          select.innerHTML = '<option value="">-- 請選擇住戶 --</option>';
+          snapshot.forEach(function(doc) {
+            var data = doc.data();
+            allResidents.push({ id: doc.id, ...data });
+            var opt = document.createElement('option');
+            opt.value = doc.id;
+            var linked = data.lineUserId ? ' ✅ 已綁定: ' + data.lineUserId.substring(0, 10) + '...' : ' ❌ 未綁定';
+            opt.textContent = data.name + ' (' + data.unit + ') - ' + data.role + linked;
+            select.appendChild(opt);
+          });
+        } catch (e) {
+          log('無法讀取住戶: ' + e.message);
+        }
+      }
+    }
+
+    document.getElementById('linkBtn').addEventListener('click', async function() {
+      var btn = document.getElementById('linkBtn');
+      var select = document.getElementById('residentSelect');
+      var docId = select.value;
+
+      if (!docId) {
+        alert('請先選擇一位住戶');
+        return;
+      }
+
+      if (!userProfile) {
+        alert('請從 LINE 開啟此頁面以取得你的 LINE userId');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = '綁定中...';
+
+      try {
+        await db.collection('residents').doc(docId).update({
+          lineUserId: userProfile.userId,
+        });
+
+        var resident = allResidents.find(function(r) { return r.id === docId; });
+        log('✅ 成功！已將 ' + userProfile.displayName + ' 的 LINE userId 綁定到 ' + (resident ? resident.name : docId));
+        log('LINE userId: ' + userProfile.userId);
+        log('\n現在重新打開 app，就會自動偵測到你的角色了！');
+
+        btn.textContent = '✅ 綁定成功！';
+      } catch (err) {
+        log('❌ 綁定失敗: ' + err.message);
+        btn.textContent = '重試';
+        btn.disabled = false;
+      }
+    });
+
+    init();
+  </script>
+</body>
+</html>
