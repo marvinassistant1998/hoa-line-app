@@ -65,8 +65,34 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </div>
 
         <div className="px-5 -mt-4 space-y-4">
-          {/* 我的繳費狀態 */}
+          {/* 社區公告 */}
           <Card className="shadow-lg">
+            <h2 className="font-semibold text-[#1D1D1F] mb-3">社區公告</h2>
+            <AlertItem
+              icon={<CalendarIcon className="w-4 h-4" color="#06C755" />}
+              text="下次管委會：5/15（三）19:30"
+              variant="primary"
+            />
+          </Card>
+
+          {/* 快速功能 */}
+          <div className="grid grid-cols-2 gap-3">
+            <QuickActionCard
+              icon={<BuildingIcon className="w-6 h-6" color="#007AFF" />}
+              title="社區廠商"
+              subtitle={`${vendors.length} 家`}
+              onClick={() => setCurrentScreen('vendors')}
+            />
+            <QuickActionCard
+              icon={<DollarSignIcon className="w-6 h-6" color="#FF9500" />}
+              title="繳費查詢"
+              subtitle="查看繳費狀態"
+              onClick={() => {}}
+            />
+          </div>
+
+          {/* 我的繳費狀態 */}
+          <Card>
             <h2 className="font-semibold text-[#1D1D1F] mb-3">我的繳費狀態</h2>
             {myUnpaid.length > 0 ? (
               <div className="space-y-2">
@@ -80,32 +106,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             ) : (
               <p className="text-[#34C759] text-center py-4">所有管理費已繳清 ✓</p>
             )}
-          </Card>
-
-          {/* 快速功能 */}
-          <div className="grid grid-cols-2 gap-3">
-            <QuickActionCard
-              icon={<BuildingIcon className="w-6 h-6" color="#007AFF" />}
-              title="社區廠商"
-              subtitle={`${vendors.length} 家`}
-              onClick={() => setCurrentScreen('vendors')}
-            />
-            <QuickActionCard
-              icon={<CalendarIcon className="w-6 h-6" color="#AF52DE" />}
-              title="社區公告"
-              subtitle="查看最新消息"
-              onClick={() => {}}
-            />
-          </div>
-
-          {/* 社區公告 */}
-          <Card>
-            <h2 className="font-semibold text-[#1D1D1F] mb-3">社區公告</h2>
-            <AlertItem
-              icon={<CalendarIcon className="w-4 h-4" color="#06C755" />}
-              text="下次管委會：5/15（三）19:30"
-              variant="primary"
-            />
           </Card>
         </div>
       </div>
