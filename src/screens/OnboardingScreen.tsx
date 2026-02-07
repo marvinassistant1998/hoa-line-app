@@ -604,12 +604,12 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
         </div>
 
         <div className="space-y-3">
-          {/* 姓名 */}
+          {/* 名稱 */}
           <div>
-            <label className="text-sm text-[#86868B] mb-1 block">您的姓名 *</label>
+            <label className="text-sm text-[#86868B] mb-1 block">您的名稱 *</label>
             <input
               type="text"
-              placeholder="請輸入您的姓名"
+              placeholder="請輸入您的名稱"
               value={data.name}
               onChange={(e) => setData({ ...data, name: e.target.value })}
               className="w-full px-4 py-3 bg-white rounded-xl border border-[#E8E8ED] text-[15px] focus:outline-none focus:border-[#06C755]"
@@ -714,7 +714,7 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
 
         <div className="bg-white rounded-xl p-4 space-y-3 border border-[#E8E8ED]">
           <div>
-            <div className="text-xs text-[#86868B]">姓名</div>
+            <div className="text-xs text-[#86868B]">名稱</div>
             <div className="text-[15px] text-[#1D1D1F] font-medium">{data.name}</div>
           </div>
           <div className="border-t border-[#E8E8ED] pt-3">
