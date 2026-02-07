@@ -227,15 +227,14 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
       // Geocode 地址取得座標
       const coords = await geocodeAddress(fullAddress);
 
-      const communityData = {
+      const communityData: Omit<Community, 'id'> = {
         name: finalName,
         address: fullAddress,
         totalUnits: 0,
         monthlyFee: 2000,
-        floors: newFloors ? parseInt(newFloors) : undefined,
-        unitsPerFloor: newUnitsPerFloor ? parseInt(newUnitsPerFloor) : undefined,
-        latitude: coords?.lat,
-        longitude: coords?.lng,
+        ...(newFloors ? { floors: parseInt(newFloors) } : {}),
+        ...(newUnitsPerFloor ? { unitsPerFloor: parseInt(newUnitsPerFloor) } : {}),
+        ...(coords ? { latitude: coords.lat, longitude: coords.lng } : {}),
         createdBy: profile?.userId || '',
         createdAt: new Date(),
       };
