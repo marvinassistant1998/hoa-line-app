@@ -14,6 +14,7 @@ import { Card, Badge } from '@/components/ui';
 import { useDataStore } from '@/stores/dataStore';
 import { useAppStore } from '@/stores/appStore';
 import { usePermission } from '@/hooks/usePermission';
+import { showToast } from '@/hooks/useToast';
 import type { Resident, RepairTicket } from '@/types';
 
 interface HomeScreenProps {
@@ -88,7 +89,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               icon={<DollarSignIcon className="w-6 h-6" color="#FF9500" />}
               title="繳費查詢"
               subtitle="查看繳費狀態"
-              onClick={() => {}}
+              onClick={() => showToast('繳費查詢功能開發中')}
             />
           </div>
 
@@ -178,13 +179,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             icon={<MicIcon className="w-6 h-6" color="#AF52DE" />}
             title="會議紀錄"
             subtitle={`${meetings.length} 份紀錄`}
-            onClick={() => {}}
+            onClick={() => showToast('會議紀錄功能開發中')}
           />
           <QuickActionCard
             icon={<FolderIcon className="w-6 h-6" color="#FF9500" />}
             title="文件庫"
             subtitle="4 份文件"
-            onClick={() => {}}
+            onClick={() => showToast('文件庫功能開發中')}
           />
         </div>
 
@@ -258,7 +259,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         <Card>
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-[#1D1D1F]">維修追蹤</h2>
-            <button className="text-sm text-[#06C755]">查看全部</button>
+            <button onClick={() => showToast('維修管理功能開發中')} className="text-sm text-[#06C755]">查看全部</button>
           </div>
 
           <div className="space-y-3">

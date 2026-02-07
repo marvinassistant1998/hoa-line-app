@@ -24,6 +24,7 @@ import {
 } from '@/components/ui';
 import { mockVendors } from '@/data/mockData';
 import { usePermission } from '@/hooks/usePermission';
+import { showToast } from '@/hooks/useToast';
 import type { Vendor, Invoice, ServiceRecord } from '@/types';
 
 // ==================== 廠商列表 ====================
@@ -135,10 +136,34 @@ export const VendorDetailScreen: React.FC<VendorDetailScreenProps> = ({ vendor, 
           </div>
 
           <div className={`grid ${canEditVendor ? 'grid-cols-3' : 'grid-cols-2'} gap-2`}>
-            <ContactBtn icon={<LineIcon className="w-5 h-5" color="#06C755" />} label="LINE" />
-            <ContactBtn icon={<PhoneIcon className="w-5 h-5" color="#007AFF" />} label="電話" />
+            <ContactBtn
+              icon={<LineIcon className="w-5 h-5" color="#06C755" />}
+              label="LINE"
+              onClick={() => {
+                if (vendor.lineId) {
+                  window.open(`https://line.me/R/ti/p/${vendor.lineId}`, '_blank');
+                } else {
+                  showToast('此廠商尚未設定 LINE ID');
+                }
+              }}
+            />
+            <ContactBtn
+              icon={<PhoneIcon className="w-5 h-5" color="#007AFF" />}
+              label="電話"
+              onClick={() => {
+                if (vendor.phone) {
+                  window.open(`tel:${vendor.phone}`);
+                } else {
+                  showToast('此廠商尚未設定電話');
+                }
+              }}
+            />
             {canEditVendor && (
-              <ContactBtn icon={<EditIcon className="w-5 h-5" color="#FF9500" />} label="編輯" />
+              <ContactBtn
+                icon={<EditIcon className="w-5 h-5" color="#FF9500" />}
+                label="編輯"
+                onClick={() => showToast('廠商編輯功能開發中')}
+              />
             )}
           </div>
         </Card>
@@ -265,10 +290,11 @@ const VendorCard: React.FC<VendorCardProps> = ({ vendor, onClick }) => (
 interface ContactBtnProps {
   icon: React.ReactNode;
   label: string;
+  onClick?: () => void;
 }
 
-const ContactBtn: React.FC<ContactBtnProps> = ({ icon, label }) => (
-  <button className="flex flex-col items-center gap-1 py-3 bg-[#F5F5F7] rounded-xl active:bg-[#E8E8ED]">
+const ContactBtn: React.FC<ContactBtnProps> = ({ icon, label, onClick }) => (
+  <button onClick={onClick} className="flex flex-col items-center gap-1 py-3 bg-[#F5F5F7] rounded-xl active:bg-[#E8E8ED]">
     {icon}
     <span className="text-xs text-[#86868B]">{label}</span>
   </button>

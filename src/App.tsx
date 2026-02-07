@@ -11,6 +11,7 @@ import {
 } from '@/screens';
 import { useAppStore } from '@/stores/appStore';
 import { useDataStore } from '@/stores/dataStore';
+import { useToastStore } from '@/hooks/useToast';
 import { liffService } from '@/services/liff';
 import { getVisibleTabs } from '@/lib/permissions';
 import type { ResidentRoleLabel } from '@/types';
@@ -34,6 +35,7 @@ const App: React.FC = () => {
   } = useAppStore();
 
   const { addResident, fetchResidents } = useDataStore();
+  const { message: toastMessage, visible: toastVisible } = useToastStore();
   const [registerStatus, setRegisterStatus] = useState<'idle' | 'registering' | 'success' | 'error'>('idle');
   const [registerMessage, setRegisterMessage] = useState('');
 
@@ -42,20 +44,23 @@ const App: React.FC = () => {
     initializeLiff();
   }, [initializeLiff]);
 
-  // LIFF 登入後偵測角色
+  // LIFF 登入後偵測角色，然後處理自動註冊
   useEffect(() => {
-    if (!isLoading && userProfile?.userId) {
-      detectUserRole(userProfile.userId);
-    }
-    // Demo 模式（沒有 LIFF）：預設為主委
-    if (!isLoading && !userProfile && error) {
-      devSetRole('主委');
-    }
-  }, [isLoading, userProfile, error]);
+    const initRoleAndRegister = async () => {
+      if (isLoading) return;
 
-  // 處理住戶自動註冊（從邀請連結進入）
-  useEffect(() => {
-    const handleAutoRegister = async () => {
+      // Demo 模式（沒有 LIFF）：開發環境預設為主委，生產環境預設為住戶
+      if (!userProfile && error) {
+        devSetRole(import.meta.env.DEV ? '主委' : '住戶');
+        return;
+      }
+
+      // 先偵測角色（等待完成）
+      if (userProfile?.userId) {
+        await detectUserRole(userProfile.userId);
+      }
+
+      // 角色偵測完成後，再處理自動註冊
       const urlParams = new URLSearchParams(window.location.search);
       const isRegister = urlParams.get('register') === 'true';
       const unit = urlParams.get('unit') || '';
@@ -64,6 +69,13 @@ const App: React.FC = () => {
 
       // 清除 URL 參數，避免重複註冊
       window.history.replaceState({}, '', window.location.pathname);
+
+      // 檢查是否已經註冊過
+      const { registrationStatus } = useAppStore.getState();
+      if (registrationStatus === 'registered') {
+        // 已經是住戶，不需要重新註冊
+        return;
+      }
 
       setRegisterStatus('registering');
       setRegisterMessage('正在為您登記...');
@@ -79,15 +91,14 @@ const App: React.FC = () => {
           throw new Error('無法獲取您的 LINE 資料');
         }
 
-        // 先檢查是否已經註冊過
+        // 再次確認（雙重檢查）
         await fetchResidents();
         const allResidents = useDataStore.getState().residents;
         const alreadyRegistered = allResidents.some(
-          (r) => r.lineUserId === profile.userId || r.lineId === profile.userId
+          (r) => r.lineUserId === profile.userId
         );
 
         if (alreadyRegistered) {
-          // 已經是住戶，不需要重新註冊
           await detectUserRole(profile.userId);
           setRegisterStatus('idle');
           return;
@@ -105,7 +116,6 @@ const App: React.FC = () => {
         });
 
         await fetchResidents();
-        // 重新偵測角色
         await detectUserRole(profile.userId);
 
         setRegisterStatus('success');
@@ -126,10 +136,8 @@ const App: React.FC = () => {
       }
     };
 
-    if (!isLoading) {
-      handleAutoRegister();
-    }
-  }, [isLoading, addResident, fetchResidents]);
+    initRoleAndRegister();
+  }, [isLoading]);
 
   // 載入中畫面
   if (isLoading) {
@@ -203,10 +211,10 @@ const App: React.FC = () => {
 
   return (
     <div className="max-w-md mx-auto bg-[#F5F5F7] min-h-screen font-[-apple-system,BlinkMacSystemFont,sans-serif]">
-      {/* 開發用角色切換器 */}
-      {(error || !userProfile) && (
+      {/* 開發用角色切換器（僅在開發環境顯示） */}
+      {import.meta.env.DEV && (error || !userProfile) && (
         <div className="fixed top-0 left-0 right-0 bg-yellow-100 border-b border-yellow-300 px-3 py-1 z-50 flex items-center justify-between max-w-md mx-auto">
-          <span className="text-xs text-yellow-800">Demo 模式 - 角色：</span>
+          <span className="text-xs text-yellow-800">DEV 模式 - 角色：</span>
           <div className="flex gap-1">
             {(['主委', '財委', '監委', '住戶'] as ResidentRoleLabel[]).map((role) => (
               <button
@@ -268,6 +276,13 @@ const App: React.FC = () => {
           setCurrentScreen={setCurrentScreen}
           visibleTabs={visibleTabs}
         />
+      )}
+
+      {/* 全局 Toast 提示 */}
+      {toastVisible && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[60] bg-[#1D1D1F] text-white px-5 py-3 rounded-xl shadow-lg text-sm font-medium animate-fade-in max-w-[80%] text-center">
+          {toastMessage}
+        </div>
       )}
     </div>
   );

@@ -29,8 +29,22 @@ export const ResidentsScreen: React.FC<ResidentsScreenProps> = ({
   setSelectedResident,
 }) => {
   const { residents, fetchResidents, addResident, isLoading } = useDataStore();
+  const canViewResidents = usePermission('view_residents');
   const canEdit = usePermission('edit_residents');
   const canSendReminders = usePermission('send_reminders');
+
+  // 權限守衛：住戶角色不能看到住戶列表
+  if (!canViewResidents) {
+    return (
+      <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center">
+        <div className="text-center px-8">
+          <p className="text-4xl mb-4">🔒</p>
+          <p className="text-lg font-semibold text-[#1D1D1F]">無權限存取</p>
+          <p className="text-sm text-[#86868B] mt-2">此頁面僅限管委會成員查看</p>
+        </div>
+      </div>
+    );
+  }
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'unpaid' | 'committee'>('all');
   const [showAddModal, setShowAddModal] = useState(false);
