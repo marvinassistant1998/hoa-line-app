@@ -11,19 +11,25 @@ import {
 import { useAppStore } from '@/stores/appStore';
 import { useDataStore } from '@/stores/dataStore';
 import { liffService } from '@/services/liff';
+import { getVisibleTabs } from '@/lib/permissions';
+import type { ResidentRoleLabel } from '@/types';
 
 const App: React.FC = () => {
   const {
     isLoading,
     error,
+    userProfile,
+    userRole,
     currentScreen,
     selectedResident,
     selectedVendor,
     initializeLiff,
+    detectUserRole,
     setCurrentScreen,
     setSelectedResident,
     setSelectedVendor,
     handleBack,
+    devSetRole,
   } = useAppStore();
 
   const { addResident, fetchResidents } = useDataStore();
@@ -34,6 +40,17 @@ const App: React.FC = () => {
   useEffect(() => {
     initializeLiff();
   }, [initializeLiff]);
+
+  // LIFF 登入後偵測角色
+  useEffect(() => {
+    if (!isLoading && userProfile?.userId) {
+      detectUserRole(userProfile.userId);
+    }
+    // Demo 模式（沒有 LIFF）：預設為主委
+    if (!isLoading && !userProfile && error) {
+      devSetRole('主委');
+    }
+  }, [isLoading, userProfile, error]);
 
   // 處理住戶自動註冊（從邀請連結進入）
   useEffect(() => {
@@ -51,11 +68,9 @@ const App: React.FC = () => {
       setRegisterMessage('正在為您登記...');
 
       try {
-        // 獲取 LINE 用戶資料
         const profile = await liffService.getProfile();
-        
+
         if (!profile) {
-          // 如果沒有登入，嘗試登入
           if (!liffService.isLoggedIn()) {
             liffService.login();
             return;
@@ -63,7 +78,6 @@ const App: React.FC = () => {
           throw new Error('無法獲取您的 LINE 資料');
         }
 
-        // 創建住戶記錄
         await addResident({
           name: profile.displayName,
           unit: unit === '待填寫' ? '' : unit,
@@ -75,13 +89,13 @@ const App: React.FC = () => {
           paymentHistory: [],
         });
 
-        // 重新獲取住戶列表
         await fetchResidents();
+        // 重新偵測角色
+        await detectUserRole(profile.userId);
 
         setRegisterStatus('success');
         setRegisterMessage(`${profile.displayName}，歡迎加入！您已成功登記為社區住戶。`);
 
-        // 3 秒後關閉提示
         setTimeout(() => {
           setRegisterStatus('idle');
         }, 5000);
@@ -90,14 +104,13 @@ const App: React.FC = () => {
         console.error('自動註冊失敗:', err);
         setRegisterStatus('error');
         setRegisterMessage('登記失敗：' + (err as Error).message);
-        
+
         setTimeout(() => {
           setRegisterStatus('idle');
         }, 5000);
       }
     };
 
-    // 等待 LIFF 初始化完成後再處理
     if (!isLoading) {
       handleAutoRegister();
     }
@@ -119,6 +132,9 @@ const App: React.FC = () => {
   if (error) {
     console.warn('LIFF 初始化失敗，使用 Demo 模式:', error);
   }
+
+  // 可見的 Tab
+  const visibleTabs = getVisibleTabs(userRole);
 
   // 路由渲染
   const renderScreen = () => {
@@ -170,6 +186,28 @@ const App: React.FC = () => {
 
   return (
     <div className="max-w-md mx-auto bg-[#F5F5F7] min-h-screen font-[-apple-system,BlinkMacSystemFont,sans-serif]">
+      {/* 開發用角色切換器 */}
+      {(error || !userProfile) && (
+        <div className="fixed top-0 left-0 right-0 bg-yellow-100 border-b border-yellow-300 px-3 py-1 z-50 flex items-center justify-between max-w-md mx-auto">
+          <span className="text-xs text-yellow-800">Demo 模式 - 角色：</span>
+          <div className="flex gap-1">
+            {(['主委', '財委', '監委', '住戶'] as ResidentRoleLabel[]).map((role) => (
+              <button
+                key={role}
+                onClick={() => devSetRole(role)}
+                className={`text-xs px-2 py-0.5 rounded ${
+                  userRole === role
+                    ? 'bg-[#06C755] text-white'
+                    : 'bg-white text-gray-600'
+                }`}
+              >
+                {role}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 自動註冊狀態提示 */}
       {registerStatus !== 'idle' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-5">
@@ -208,7 +246,11 @@ const App: React.FC = () => {
 
       {renderScreen()}
       {showTabBar && (
-        <TabBar currentScreen={currentScreen} setCurrentScreen={setCurrentScreen} />
+        <TabBar
+          currentScreen={currentScreen}
+          setCurrentScreen={setCurrentScreen}
+          visibleTabs={visibleTabs}
+        />
       )}
     </div>
   );

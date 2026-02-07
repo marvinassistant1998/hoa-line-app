@@ -23,6 +23,7 @@ import {
   SelectField,
 } from '@/components/ui';
 import { mockVendors } from '@/data/mockData';
+import { usePermission } from '@/hooks/usePermission';
 import type { Vendor, Invoice, ServiceRecord } from '@/types';
 
 // ==================== 廠商列表 ====================
@@ -34,6 +35,7 @@ export const VendorsScreen: React.FC<VendorsScreenProps> = ({ setSelectedVendor 
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
+  const canEdit = usePermission('edit_vendors');
 
   const categories = ['all', '電梯維護', '清潔服務', '水電維修', '保全', '其他'];
 
@@ -86,8 +88,8 @@ export const VendorsScreen: React.FC<VendorsScreenProps> = ({ setSelectedVendor 
         </div>
       </div>
 
-      <FloatingButton onClick={() => setShowAddModal(true)} />
-      <AddVendorModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} />
+      {canEdit && <FloatingButton onClick={() => setShowAddModal(true)} />}
+      {canEdit && <AddVendorModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} />}
     </div>
   );
 };
@@ -102,6 +104,8 @@ export const VendorDetailScreen: React.FC<VendorDetailScreenProps> = ({ vendor, 
   const [activeTab, setActiveTab] = useState<'info' | 'invoices' | 'services'>('info');
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [showServiceModal, setShowServiceModal] = useState(false);
+  const canEditVendor = usePermission('edit_vendors');
+  const canUploadInvoices = usePermission('upload_invoices');
 
   return (
     <div className="min-h-screen bg-[#F5F5F7] pb-24">
@@ -130,10 +134,12 @@ export const VendorDetailScreen: React.FC<VendorDetailScreenProps> = ({ vendor, 
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
+          <div className={`grid ${canEditVendor ? 'grid-cols-3' : 'grid-cols-2'} gap-2`}>
             <ContactBtn icon={<LineIcon className="w-5 h-5" color="#06C755" />} label="LINE" />
             <ContactBtn icon={<PhoneIcon className="w-5 h-5" color="#007AFF" />} label="電話" />
-            <ContactBtn icon={<EditIcon className="w-5 h-5" color="#FF9500" />} label="編輯" />
+            {canEditVendor && (
+              <ContactBtn icon={<EditIcon className="w-5 h-5" color="#FF9500" />} label="編輯" />
+            )}
           </div>
         </Card>
       </div>
@@ -171,13 +177,15 @@ export const VendorDetailScreen: React.FC<VendorDetailScreenProps> = ({ vendor, 
 
         {activeTab === 'invoices' && (
           <>
-            <button
-              onClick={() => setShowInvoiceModal(true)}
-              className="w-full py-3 bg-[#06C755] text-white rounded-xl font-medium flex items-center justify-center gap-2"
-            >
-              <UploadIcon className="w-5 h-5" color="white" />
-              上傳單據
-            </button>
+            {canUploadInvoices && (
+              <button
+                onClick={() => setShowInvoiceModal(true)}
+                className="w-full py-3 bg-[#06C755] text-white rounded-xl font-medium flex items-center justify-center gap-2"
+              >
+                <UploadIcon className="w-5 h-5" color="white" />
+                上傳單據
+              </button>
+            )}
             {vendor.invoices.length > 0 ? (
               <Card>
                 {vendor.invoices.map((inv, i) => (
@@ -199,13 +207,15 @@ export const VendorDetailScreen: React.FC<VendorDetailScreenProps> = ({ vendor, 
 
         {activeTab === 'services' && (
           <>
-            <button
-              onClick={() => setShowServiceModal(true)}
-              className="w-full py-3 bg-[#06C755] text-white rounded-xl font-medium flex items-center justify-center gap-2"
-            >
-              <PlusIcon className="w-5 h-5" color="white" />
-              新增服務紀錄
-            </button>
+            {canEditVendor && (
+              <button
+                onClick={() => setShowServiceModal(true)}
+                className="w-full py-3 bg-[#06C755] text-white rounded-xl font-medium flex items-center justify-center gap-2"
+              >
+                <PlusIcon className="w-5 h-5" color="white" />
+                新增服務紀錄
+              </button>
+            )}
             {vendor.serviceRecords.length > 0 ? (
               <div className="space-y-3">
                 {vendor.serviceRecords.map((rec, i) => (

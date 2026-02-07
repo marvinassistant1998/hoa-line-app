@@ -16,6 +16,7 @@ import {
   ConfirmDialog,
 } from '@/components/ui';
 import { useDataStore } from '@/stores/dataStore';
+import { usePermission } from '@/hooks/usePermission';
 import type { Resident, PaymentRecord, ResidentRoleLabel } from '@/types';
 
 // ==================== 住戶列表 ====================
@@ -28,6 +29,8 @@ export const ResidentsScreen: React.FC<ResidentsScreenProps> = ({
   setSelectedResident,
 }) => {
   const { residents, fetchResidents, addResident, isLoading } = useDataStore();
+  const canEdit = usePermission('edit_residents');
+  const canSendReminders = usePermission('send_reminders');
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'unpaid' | 'committee'>('all');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -98,8 +101,8 @@ export const ResidentsScreen: React.FC<ResidentsScreenProps> = ({
           />
         </div>
 
-        {/* 批次催繳按鈕 */}
-        {filter === 'unpaid' && unpaidCount > 0 && (
+        {/* 批次催繳按鈕（僅主委/財委） */}
+        {canSendReminders && filter === 'unpaid' && unpaidCount > 0 && (
           <button className="w-full py-3 bg-[#06C755] text-white rounded-xl font-medium flex items-center justify-center gap-2">
             <LineIcon className="w-5 h-5" color="white" />
             一鍵催繳 {unpaidCount} 戶
@@ -135,15 +138,17 @@ export const ResidentsScreen: React.FC<ResidentsScreenProps> = ({
         )}
       </div>
 
-      {/* 新增住戶按鈕 */}
-      <FloatingButton onClick={() => setShowAddModal(true)} />
+      {/* 新增住戶按鈕（僅主委） */}
+      {canEdit && <FloatingButton onClick={() => setShowAddModal(true)} />}
 
       {/* 新增住戶 Modal */}
-      <AddResidentModal
-        isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        onSubmit={handleAddResident}
-      />
+      {canEdit && (
+        <AddResidentModal
+          isOpen={showAddModal}
+          onClose={() => setShowAddModal(false)}
+          onSubmit={handleAddResident}
+        />
+      )}
     </div>
   );
 };
@@ -159,6 +164,10 @@ export const ResidentDetailScreen: React.FC<ResidentDetailScreenProps> = ({
   onBack,
 }) => {
   const { residents, updateResident, deleteResident } = useDataStore();
+  const canEditResident = usePermission('edit_residents');
+  const canDeleteResident = usePermission('delete_residents');
+  const canEditPayments = usePermission('edit_payments');
+  const canSendReminders = usePermission('send_reminders');
   const [activeTab, setActiveTab] = useState<'info' | 'payments'>('info');
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -214,9 +223,11 @@ export const ResidentDetailScreen: React.FC<ResidentDetailScreenProps> = ({
         showBack
         onBack={onBack}
         rightAction={
-          <button onClick={() => setShowEditModal(true)} className="text-[#06C755]">
-            編輯
-          </button>
+          canEditResident ? (
+            <button onClick={() => setShowEditModal(true)} className="text-[#06C755]">
+              編輯
+            </button>
+          ) : null
         }
       />
 
@@ -239,7 +250,7 @@ export const ResidentDetailScreen: React.FC<ResidentDetailScreenProps> = ({
           </div>
 
           {/* 聯絡方式 */}
-          <div className="grid grid-cols-3 gap-2">
+          <div className={`grid ${canDeleteResident ? 'grid-cols-3' : 'grid-cols-2'} gap-2`}>
             <ContactButton
               icon={<LineIcon className="w-5 h-5" color="#06C755" />}
               label="LINE"
@@ -254,11 +265,13 @@ export const ResidentDetailScreen: React.FC<ResidentDetailScreenProps> = ({
               label="通話"
               onClick={() => window.open(`tel:${resident.phone}`)}
             />
-            <ContactButton
-              icon={<TrashIcon className="w-5 h-5" color="#FF3B30" />}
-              label="刪除"
-              onClick={() => setShowDeleteConfirm(true)}
-            />
+            {canDeleteResident && (
+              <ContactButton
+                icon={<TrashIcon className="w-5 h-5" color="#FF3B30" />}
+                label="刪除"
+                onClick={() => setShowDeleteConfirm(true)}
+              />
+            )}
           </div>
         </Card>
       </div>
@@ -316,13 +329,15 @@ export const ResidentDetailScreen: React.FC<ResidentDetailScreenProps> = ({
               </div>
             </Card>
 
-            {/* 新增繳費紀錄按鈕 */}
-            <button
-              onClick={() => setShowPaymentModal(true)}
-              className="w-full py-3 bg-[#06C755] text-white rounded-xl font-medium"
-            >
-              更新繳費狀態
-            </button>
+            {/* 新增繳費紀錄按鈕（僅主委/財委） */}
+            {canEditPayments && (
+              <button
+                onClick={() => setShowPaymentModal(true)}
+                className="w-full py-3 bg-[#06C755] text-white rounded-xl font-medium"
+              >
+                更新繳費狀態
+              </button>
+            )}
 
             {/* 繳費歷史列表 */}
             <Card>
@@ -338,8 +353,8 @@ export const ResidentDetailScreen: React.FC<ResidentDetailScreenProps> = ({
               )}
             </Card>
 
-            {/* 催繳按鈕 */}
-            {totalUnpaid > 0 && (
+            {/* 催繳按鈕（僅主委/財委） */}
+            {canSendReminders && totalUnpaid > 0 && (
               <button className="w-full py-4 bg-[#06C755] text-white rounded-xl font-semibold flex items-center justify-center gap-2">
                 <LineIcon className="w-5 h-5" color="white" />
                 發送催繳通知

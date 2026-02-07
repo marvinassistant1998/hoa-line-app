@@ -6,9 +6,27 @@ import {
   TrashIcon,
 } from '@/components/Icons';
 import { Header, Card, Badge, Modal } from '@/components/ui';
+import { usePermission } from '@/hooks/usePermission';
 import type { Admin, PlanType, Usage } from '@/types';
 
 export const SettingsScreen: React.FC = () => {
+  const canAccess = usePermission('access_settings');
+
+  if (!canAccess) {
+    return (
+      <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center pb-24">
+        <div className="text-center px-5">
+          <div className="w-16 h-16 bg-[#FF9500]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-[#FF9500]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H10m2-10V4m6.364 1.636l-1.414 1.414M21 12h-2M5 12H3m3.636-5.364L5.222 5.222M12 20a8 8 0 100-16 8 8 0 000 16z" />
+            </svg>
+          </div>
+          <h2 className="text-lg font-semibold text-[#1D1D1F] mb-2">無權限存取</h2>
+          <p className="text-[#86868B] text-sm">僅主委可使用設定功能</p>
+        </div>
+      </div>
+    );
+  }
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
 

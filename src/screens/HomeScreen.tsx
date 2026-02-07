@@ -12,6 +12,8 @@ import {
 } from '@/components/Icons';
 import { Card, Badge } from '@/components/ui';
 import { useDataStore } from '@/stores/dataStore';
+import { useAppStore } from '@/stores/appStore';
+import { usePermission } from '@/hooks/usePermission';
 import type { Resident, RepairTicket } from '@/types';
 
 interface HomeScreenProps {
@@ -24,6 +26,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   setSelectedResident,
 }) => {
   const { residents, repairs, vendors, meetings, initializeData } = useDataStore();
+  const { userRole, currentResident } = useAppStore();
+  const canViewDashboard = usePermission('view_dashboard');
+  const canSendReminders = usePermission('send_reminders');
 
   // 初始化資料
   useEffect(() => {
@@ -39,6 +44,75 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const pendingRepairs = repairs.filter((r) => r.status === 'pending');
   const inProgressRepairs = repairs.filter((r) => r.status === 'in_progress');
 
+  // === 住戶角色：顯示個人資訊 ===
+  if (!canViewDashboard) {
+    const myPayments = currentResident?.paymentHistory || [];
+    const myUnpaid = myPayments.filter((p) => !p.paid);
+
+    return (
+      <div className="pb-24">
+        <div className="bg-gradient-to-b from-[#06C755] to-[#05A847] text-white">
+          <div className="h-12" />
+          <div className="px-5 py-6">
+            <p className="text-white/80 text-sm">早安 👋</p>
+            <h1 className="text-2xl font-bold mt-1">
+              {currentResident?.name || '住戶'}
+            </h1>
+            <p className="text-white/70 text-sm mt-1">
+              {currentResident?.unit || ''} · 幸福社區
+            </p>
+          </div>
+        </div>
+
+        <div className="px-5 -mt-4 space-y-4">
+          {/* 我的繳費狀態 */}
+          <Card className="shadow-lg">
+            <h2 className="font-semibold text-[#1D1D1F] mb-3">我的繳費狀態</h2>
+            {myUnpaid.length > 0 ? (
+              <div className="space-y-2">
+                {myUnpaid.map((p, i) => (
+                  <div key={i} className="flex justify-between items-center py-2 border-b border-[#E8E8ED] last:border-0">
+                    <span className="text-[#1D1D1F]">{p.year}年{p.month}月</span>
+                    <span className="text-[#FF3B30] font-medium">${p.amount.toLocaleString()} 未繳</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[#34C759] text-center py-4">所有管理費已繳清 ✓</p>
+            )}
+          </Card>
+
+          {/* 快速功能 */}
+          <div className="grid grid-cols-2 gap-3">
+            <QuickActionCard
+              icon={<BuildingIcon className="w-6 h-6" color="#007AFF" />}
+              title="社區廠商"
+              subtitle={`${vendors.length} 家`}
+              onClick={() => setCurrentScreen('vendors')}
+            />
+            <QuickActionCard
+              icon={<CalendarIcon className="w-6 h-6" color="#AF52DE" />}
+              title="社區公告"
+              subtitle="查看最新消息"
+              onClick={() => {}}
+            />
+          </div>
+
+          {/* 社區公告 */}
+          <Card>
+            <h2 className="font-semibold text-[#1D1D1F] mb-3">社區公告</h2>
+            <AlertItem
+              icon={<CalendarIcon className="w-4 h-4" color="#06C755" />}
+              text="下次管委會：5/15（三）19:30"
+              variant="primary"
+            />
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // === 管委角色：完整儀表板 ===
   return (
     <div className="pb-24">
       {/* Header */}
@@ -47,6 +121,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         <div className="px-5 py-6">
           <p className="text-white/80 text-sm">早安 👋</p>
           <h1 className="text-2xl font-bold mt-1">幸福社區管委會</h1>
+          {userRole && (
+            <p className="text-white/70 text-sm mt-1">身份：{userRole}</p>
+          )}
         </div>
       </div>
 
@@ -164,9 +241,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                         <p className="text-xs text-[#86868B]">{resident.unit}</p>
                       </div>
                     </div>
-                    <button className="px-3 py-1 bg-[#06C755] text-white text-xs rounded-full">
-                      催繳
-                    </button>
+                    {canSendReminders && (
+                      <button className="px-3 py-1 bg-[#06C755] text-white text-xs rounded-full">
+                        催繳
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>

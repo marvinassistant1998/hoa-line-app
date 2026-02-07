@@ -14,15 +14,20 @@ import {
 interface TabBarProps {
   currentScreen: string;
   setCurrentScreen: (screen: string) => void;
+  visibleTabs?: string[];
 }
 
-export const TabBar: React.FC<TabBarProps> = ({ currentScreen, setCurrentScreen }) => {
-  const tabs = [
-    { id: 'home', label: '首頁', Icon: HomeIcon },
-    { id: 'residents', label: '住戶', Icon: UsersIcon },
-    { id: 'vendors', label: '廠商', Icon: BuildingIcon },
-    { id: 'settings', label: '設定', Icon: SettingsIcon },
-  ];
+const ALL_TABS = [
+  { id: 'home', label: '首頁', Icon: HomeIcon },
+  { id: 'residents', label: '住戶', Icon: UsersIcon },
+  { id: 'vendors', label: '廠商', Icon: BuildingIcon },
+  { id: 'settings', label: '設定', Icon: SettingsIcon },
+];
+
+export const TabBar: React.FC<TabBarProps> = ({ currentScreen, setCurrentScreen, visibleTabs }) => {
+  const tabs = visibleTabs
+    ? ALL_TABS.filter((t) => visibleTabs.includes(t.id))
+    : ALL_TABS;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-[#E8E8ED] px-6 pt-2 pb-8 z-40">
