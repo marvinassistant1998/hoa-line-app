@@ -163,17 +163,21 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
       );
     }
 
-    // 有 GPS 時：只顯示有座標且在 10km 內的社區，按距離排序
+    // 有 GPS 時：有座標的按距離排前面，沒座標的附加在後面
     if (userLocation && !searchKeyword) {
-      const withDist = list
+      const withCoords = list
         .filter((c) => c.latitude && c.longitude)
         .map((c) => ({
           community: c,
           distance: getDistance(userLocation.lat, userLocation.lng, c.latitude!, c.longitude!),
         }))
-        .filter((item) => item.distance <= 10)
         .sort((a, b) => a.distance - b.distance);
-      return withDist;
+
+      const withoutCoords = list
+        .filter((c) => !c.latitude || !c.longitude)
+        .map((c) => ({ community: c, distance: -1 }));
+
+      return [...withCoords, ...withoutCoords];
     }
 
     return list.map((c) => ({ community: c, distance: -1 }));
@@ -396,7 +400,7 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
 
       {/* 附近社區提示 */}
       {!searchKeyword && userLocation && (
-        <p className="text-xs text-[#86868B]">📍 依據您的位置顯示 10 公里內的社區</p>
+        <p className="text-xs text-[#86868B]">📍 依據您的位置排序，距離近的社區優先顯示</p>
       )}
       {!searchKeyword && locationError && (
         <p className="text-xs text-[#86868B]">📍 無法取得位置，顯示所有社區</p>
