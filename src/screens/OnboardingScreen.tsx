@@ -402,14 +402,6 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
           />
         </div>
 
-        {/* 組合後的地址預覽 */}
-        {isAddressComplete && (
-          <div className="bg-[#F0FFF4] border border-[#06C755]/20 rounded-xl p-3">
-            <div className="text-xs text-[#06C755] mb-1">地址預覽</div>
-            <div className="text-[15px] text-[#1D1D1F]">{getFullAddress()}</div>
-          </div>
-        )}
-
         {/* 社區名稱 */}
         <div className="border-t border-[#E8E8ED] pt-3">
           <div
